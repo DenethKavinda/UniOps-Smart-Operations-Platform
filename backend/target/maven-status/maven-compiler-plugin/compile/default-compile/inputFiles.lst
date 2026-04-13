@@ -1,29 +1,36 @@
-E:\UniOps – Smart Operations Platform\backend\src\main\java\com\campus\asset\Asset.java
-E:\UniOps – Smart Operations Platform\backend\src\main\java\com\campus\asset\AssetController.java
-E:\UniOps – Smart Operations Platform\backend\src\main\java\com\campus\asset\AssetRepository.java
-E:\UniOps – Smart Operations Platform\backend\src\main\java\com\campus\asset\AssetService.java
-E:\UniOps – Smart Operations Platform\backend\src\main\java\com\campus\asset\AssetServiceImpl.java
-E:\UniOps – Smart Operations Platform\backend\src\main\java\com\campus\booking\Booking.java
-E:\UniOps – Smart Operations Platform\backend\src\main\java\com\campus\booking\BookingController.java
-E:\UniOps – Smart Operations Platform\backend\src\main\java\com\campus\booking\BookingRepository.java
-E:\UniOps – Smart Operations Platform\backend\src\main\java\com\campus\booking\BookingService.java
-E:\UniOps – Smart Operations Platform\backend\src\main\java\com\campus\booking\BookingServiceImpl.java
-E:\UniOps – Smart Operations Platform\backend\src\main\java\com\campus\CampusApplication.java
-E:\UniOps – Smart Operations Platform\backend\src\main\java\com\campus\common\exception\GlobalExceptionHandler.java
-E:\UniOps – Smart Operations Platform\backend\src\main\java\com\campus\common\exception\ResourceNotFoundException.java
-E:\UniOps – Smart Operations Platform\backend\src\main\java\com\campus\common\response\ApiResponse.java
-E:\UniOps – Smart Operations Platform\backend\src\main\java\com\campus\config\AppConfig.java
-E:\UniOps – Smart Operations Platform\backend\src\main\java\com\campus\config\CorsConfig.java
-E:\UniOps – Smart Operations Platform\backend\src\main\java\com\campus\maintenance\Maintenance.java
-E:\UniOps – Smart Operations Platform\backend\src\main\java\com\campus\maintenance\MaintenanceController.java
-E:\UniOps – Smart Operations Platform\backend\src\main\java\com\campus\maintenance\MaintenanceRepository.java
-E:\UniOps – Smart Operations Platform\backend\src\main\java\com\campus\maintenance\MaintenanceService.java
-E:\UniOps – Smart Operations Platform\backend\src\main\java\com\campus\maintenance\MaintenanceServiceImpl.java
-E:\UniOps – Smart Operations Platform\backend\src\main\java\com\campus\user\dto\AuthRequest.java
-E:\UniOps – Smart Operations Platform\backend\src\main\java\com\campus\user\dto\AuthResponse.java
-E:\UniOps – Smart Operations Platform\backend\src\main\java\com\campus\user\dto\RegisterRequest.java
-E:\UniOps – Smart Operations Platform\backend\src\main\java\com\campus\user\User.java
-E:\UniOps – Smart Operations Platform\backend\src\main\java\com\campus\user\UserController.java
-E:\UniOps – Smart Operations Platform\backend\src\main\java\com\campus\user\UserRepository.java
-E:\UniOps – Smart Operations Platform\backend\src\main\java\com\campus\user\UserService.java
-E:\UniOps – Smart Operations Platform\backend\src\main\java\com\campus\user\UserServiceImpl.java
+E:\UniOps\backend\src\main\java\com\campus\asset\Asset.java
+E:\UniOps\backend\src\main\java\com\campus\asset\AssetController.java
+E:\UniOps\backend\src\main\java\com\campus\asset\AssetRepository.java
+E:\UniOps\backend\src\main\java\com\campus\asset\AssetService.java
+E:\UniOps\backend\src\main\java\com\campus\asset\AssetServiceImpl.java
+E:\UniOps\backend\src\main\java\com\campus\booking\Booking.java
+E:\UniOps\backend\src\main\java\com\campus\booking\BookingController.java
+E:\UniOps\backend\src\main\java\com\campus\booking\BookingRepository.java
+E:\UniOps\backend\src\main\java\com\campus\booking\BookingService.java
+E:\UniOps\backend\src\main\java\com\campus\booking\BookingServiceImpl.java
+E:\UniOps\backend\src\main\java\com\campus\CampusApplication.java
+E:\UniOps\backend\src\main\java\com\campus\common\config\DataInitializer.java
+E:\UniOps\backend\src\main\java\com\campus\common\exception\GlobalExceptionHandler.java
+E:\UniOps\backend\src\main\java\com\campus\common\exception\ResourceNotFoundException.java
+E:\UniOps\backend\src\main\java\com\campus\common\response\ApiResponse.java
+E:\UniOps\backend\src\main\java\com\campus\config\AppConfig.java
+E:\UniOps\backend\src\main\java\com\campus\config\CorsConfig.java
+E:\UniOps\backend\src\main\java\com\campus\maintenance\Maintenance.java
+E:\UniOps\backend\src\main\java\com\campus\maintenance\MaintenanceController.java
+E:\UniOps\backend\src\main\java\com\campus\maintenance\MaintenanceRepository.java
+E:\UniOps\backend\src\main\java\com\campus\maintenance\MaintenanceService.java
+E:\UniOps\backend\src\main\java\com\campus\maintenance\MaintenanceServiceImpl.java
+E:\UniOps\backend\src\main\java\com\campus\user\dto\AdminDashboardResponse.java
+E:\UniOps\backend\src\main\java\com\campus\user\dto\AdminUserResponse.java
+E:\UniOps\backend\src\main\java\com\campus\user\dto\AuthRequest.java
+E:\UniOps\backend\src\main\java\com\campus\user\dto\AuthResponse.java
+E:\UniOps\backend\src\main\java\com\campus\user\dto\LoginChartPointResponse.java
+E:\UniOps\backend\src\main\java\com\campus\user\dto\RegisterRequest.java
+E:\UniOps\backend\src\main\java\com\campus\user\dto\RoleStatsResponse.java
+E:\UniOps\backend\src\main\java\com\campus\user\dto\UpdateRoleRequest.java
+E:\UniOps\backend\src\main\java\com\campus\user\User.java
+E:\UniOps\backend\src\main\java\com\campus\user\UserController.java
+E:\UniOps\backend\src\main\java\com\campus\user\UserRepository.java
+E:\UniOps\backend\src\main\java\com\campus\user\UserRole.java
+E:\UniOps\backend\src\main\java\com\campus\user\UserService.java
+E:\UniOps\backend\src\main\java\com\campus\user\UserServiceImpl.java

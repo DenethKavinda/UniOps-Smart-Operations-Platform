@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Navbar from "./components/Navbar";
+import AdminDashboard from "./pages/AdminDashboard";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -15,15 +16,16 @@ function App() {
   useEffect(() => {
     const savedUser = localStorage.getItem("uniops_user");
     if (savedUser) {
-      setCurrentUser(JSON.parse(savedUser));
-      setCurrentView("home");
+      const parsedUser = JSON.parse(savedUser);
+      setCurrentUser(parsedUser);
+      setCurrentView(parsedUser?.role === "ADMIN" ? "admin" : "home");
     }
   }, []);
 
   const handleLoginSuccess = (user) => {
     localStorage.setItem("uniops_user", JSON.stringify(user));
     setCurrentUser(user);
-    setCurrentView("home");
+    setCurrentView(user?.role === "ADMIN" ? "admin" : "home");
   };
 
   const handleLogout = () => {
@@ -46,6 +48,9 @@ function App() {
         onLogout={handleLogout}
       />
 
+      {currentView === "admin" && currentUser?.role === "ADMIN" && (
+        <AdminDashboard user={currentUser} />
+      )}
       {currentView === "home" && currentUser && <Home user={currentUser} />}
       {currentView === "login" && (
         <Login

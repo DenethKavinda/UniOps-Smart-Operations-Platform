@@ -1,4 +1,6 @@
 function Navbar({ isAuthenticated, currentUser, onNavigate, onLogout }) {
+  const isAdmin = currentUser?.role === "ADMIN";
+
   return (
     <header className="sticky top-0 z-10 border-b border-slate-800 bg-slate-950/80 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
@@ -14,19 +16,23 @@ function Navbar({ isAuthenticated, currentUser, onNavigate, onLogout }) {
         <nav className="flex items-center gap-2 text-sm sm:gap-4 sm:text-base">
           <button
             type="button"
-            onClick={() => onNavigate(isAuthenticated ? "home" : "login")}
+            onClick={() =>
+              onNavigate(
+                isAuthenticated ? (isAdmin ? "admin" : "home") : "login",
+              )
+            }
             className="rounded-md px-3 py-1.5 text-slate-300 transition hover:bg-slate-800 hover:text-white"
           >
-            Dashboard
+            {isAdmin ? "Admin Dashboard" : "Dashboard"}
           </button>
 
           {isAuthenticated && (
             <button
               type="button"
-              onClick={() => onNavigate("home")}
+              onClick={() => onNavigate(isAdmin ? "admin" : "home")}
               className="rounded-md px-3 py-1.5 text-slate-300 transition hover:bg-slate-800 hover:text-white"
             >
-              Modules
+              {isAdmin ? "Users" : "Modules"}
             </button>
           )}
 
@@ -45,7 +51,7 @@ function Navbar({ isAuthenticated, currentUser, onNavigate, onLogout }) {
               className="hidden rounded-md bg-slate-800 px-3 py-1.5 text-slate-200 sm:inline"
               title={currentUser?.email}
             >
-              {currentUser?.name}
+              {currentUser?.name} · {currentUser?.role}
             </span>
           )}
 
