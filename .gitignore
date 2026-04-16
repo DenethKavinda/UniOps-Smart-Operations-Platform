@@ -1,0 +1,9 @@
+backend/target/
+frontend/build/
+frontend/node_modules/
+node_modules/
+.cache/
+.env
+*.log
+.vscode/
+.idea/
