@@ -61,7 +61,7 @@ public class NotificationController {
                 .body(resource);
     }
 
-    @PostMapping("/admin/notifications")
+    @PostMapping(value = "/admin/notifications", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<NotificationResponse>> createNotificationWithFile(
             @RequestParam String title,
             @RequestParam String message,

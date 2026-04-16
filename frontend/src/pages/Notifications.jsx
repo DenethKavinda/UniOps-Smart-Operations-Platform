@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import api from "../api/axiosConfig";
 
-function Notifications({ onBack, onViewed }) {
+function Notifications({ onBack, onViewed, onMarkNotificationsRead }) {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -85,6 +85,20 @@ function Notifications({ onBack, onViewed }) {
         >
           Back
         </button>
+        <button
+          type="button"
+          onClick={async () => {
+            if (onMarkNotificationsRead) {
+              await onMarkNotificationsRead();
+            }
+            if (onViewed) {
+              await onViewed();
+            }
+          }}
+          className="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
+        >
+          Mark as read
+        </button>
       </div>
 
       {error && (
@@ -151,6 +165,14 @@ function Notifications({ onBack, onViewed }) {
                   </a>
                 )}
               </div>
+
+              {item.documentContentType?.startsWith("image/") && (
+                <img
+                  src={`${notificationsBaseUrl}/notifications/${item.id}/document`}
+                  alt={item.documentName || item.title}
+                  className="mt-4 max-h-80 w-full rounded-2xl object-cover"
+                />
+              )}
 
               {item.createdBy && (
                 <p className="mt-3 text-xs text-slate-400">

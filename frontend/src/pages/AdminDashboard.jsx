@@ -822,11 +822,12 @@ function AdminDashboard({ user, onOpenAddNotifications, onOpenAnalytics }) {
 
                     <div>
                       <label className="mb-1 block text-sm font-semibold text-slate-200">
-                        Upload Document (PDF, Excel, Docs, etc.)
+                        Upload Image or Document
                       </label>
                       <input
                         ref={documentInputRef}
                         type="file"
+                        accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
                         onChange={(e) =>
                           handleNotificationField(
                             "documentFile",
@@ -836,8 +837,23 @@ function AdminDashboard({ user, onOpenAddNotifications, onOpenAnalytics }) {
                         className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 file:mr-3 file:rounded-md file:border-0 file:bg-cyan-500 file:px-3 file:py-1 file:text-sm file:font-semibold file:text-slate-950"
                       />
                       <p className="mt-1 text-xs text-slate-400">
-                        Max upload size is 10 MB.
+                        Images will be shown inline in notifications. Max upload
+                        size is 10 MB.
                       </p>
+                      {notificationForm.documentFile &&
+                        notificationForm.documentFile.type.startsWith(
+                          "image/",
+                        ) && (
+                          <div className="mt-3 overflow-hidden rounded-2xl border border-slate-700 bg-slate-950/80">
+                            <img
+                              src={URL.createObjectURL(
+                                notificationForm.documentFile,
+                              )}
+                              alt="Notification attachment preview"
+                              className="max-h-56 w-full object-cover"
+                            />
+                          </div>
+                        )}
                     </div>
 
                     <button

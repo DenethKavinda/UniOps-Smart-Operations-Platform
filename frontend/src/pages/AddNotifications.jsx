@@ -133,6 +133,13 @@ function AddNotifications({ onBack }) {
                   <p className="mt-2 whitespace-pre-wrap text-sm text-slate-300">
                     {item.message}
                   </p>
+                  {item.documentContentType?.startsWith("image/") && (
+                    <img
+                      src={`${notificationsBaseUrl}/notifications/${item.id}/document`}
+                      alt={item.documentName || item.title}
+                      className="mt-4 max-h-72 w-full rounded-2xl object-cover"
+                    />
+                  )}
                   <div className="mt-3 flex flex-wrap gap-3 text-xs">
                     {item.linkUrl && (
                       <a

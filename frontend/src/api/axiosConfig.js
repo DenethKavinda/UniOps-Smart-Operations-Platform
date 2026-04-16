@@ -9,7 +9,12 @@ api.interceptors.request.use((config) => {
   // Let the browser set multipart boundaries for FormData payloads.
   if (config.data instanceof FormData) {
     if (config.headers) {
+      if (typeof config.headers.delete === "function") {
+        config.headers.delete("Content-Type");
+        config.headers.delete("content-type");
+      }
       delete config.headers["Content-Type"];
+      delete config.headers["content-type"];
     }
     return config;
   }

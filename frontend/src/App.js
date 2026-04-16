@@ -188,6 +188,10 @@ function App() {
     await markNotificationsAsRead(currentUser);
   };
 
+  const handleMarkNotificationsRead = async () => {
+    await markNotificationsAsRead(currentUser);
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <Navbar
@@ -215,6 +219,7 @@ function App() {
           unreadNotificationCount={unreadNotificationCount}
           hasNewNotificationAlert={hasNewNotificationAlert}
           onOpenNotifications={openNotifications}
+          onMarkNotificationsRead={handleMarkNotificationsRead}
         />
       )}
       {currentView === "admin-add-notifications" &&
@@ -227,6 +232,7 @@ function App() {
       {currentView === "notifications" && currentUser && (
         <Notifications
           onViewed={() => markNotificationsAsRead(currentUser)}
+          onMarkNotificationsRead={handleMarkNotificationsRead}
           onBack={() =>
             setCurrentView(currentUser?.role === "ADMIN" ? "admin" : "home")
           }

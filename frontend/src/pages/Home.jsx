@@ -38,6 +38,7 @@ const quickActions = [
 function Home({
   user,
   onOpenNotifications,
+  onMarkNotificationsRead,
   unreadNotificationCount = 0,
   hasNewNotificationAlert = false,
   onNavigate,
@@ -258,6 +259,10 @@ function Home({
         ? notificationItems[0].createdAt
         : new Date().toISOString();
     localStorage.setItem(notificationsLastSeenKey, latestCreatedAt);
+    setNotificationItems((prev) => [...prev]);
+    if (typeof onMarkNotificationsRead === "function") {
+      onMarkNotificationsRead();
+    }
   };
 
   return (
@@ -339,6 +344,17 @@ function Home({
                             {notification.time}
                           </p>
                         </div>
+                        {notification.documentContentType?.startsWith(
+                          "image/",
+                        ) && (
+                          <img
+                            src={`${api.defaults.baseURL || "http://localhost:8081/api"}/notifications/${notification.id}/document`}
+                            alt={
+                              notification.documentName || notification.title
+                            }
+                            className="mt-3 max-h-40 w-full rounded-xl object-cover"
+                          />
+                        )}
                         {!notification.read && (
                           <span className="mt-1 inline-flex h-2.5 w-2.5 rounded-full bg-cyan-400" />
                         )}

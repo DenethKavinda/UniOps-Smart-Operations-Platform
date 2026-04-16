@@ -12,11 +12,13 @@ public class NotificationResponse {
     private String documentUrl;
     private boolean hasDocument;
     private String documentName;
+    private String documentContentType;
     private String createdBy;
     private LocalDateTime createdAt;
 
     public NotificationResponse(Long id, String title, String message, String linkUrl, String linkLabel,
-            String documentUrl, boolean hasDocument, String documentName, String createdBy, LocalDateTime createdAt) {
+            String documentUrl, boolean hasDocument, String documentName, String documentContentType,
+            String createdBy, LocalDateTime createdAt) {
         this.id = id;
         this.title = title;
         this.message = message;
@@ -25,6 +27,7 @@ public class NotificationResponse {
         this.documentUrl = documentUrl;
         this.hasDocument = hasDocument;
         this.documentName = documentName;
+        this.documentContentType = documentContentType;
         this.createdBy = createdBy;
         this.createdAt = createdAt;
     }
@@ -91,6 +94,14 @@ public class NotificationResponse {
 
     public void setDocumentName(String documentName) {
         this.documentName = documentName;
+    }
+
+    public String getDocumentContentType() {
+        return documentContentType;
+    }
+
+    public void setDocumentContentType(String documentContentType) {
+        this.documentContentType = documentContentType;
     }
 
     public String getCreatedBy() {

@@ -132,7 +132,8 @@ public class NotificationServiceImpl implements NotificationService {
         return new NotificationResponse(notification.getId(), notification.getTitle(), notification.getMessage(),
                 notification.getLinkUrl(), notification.getLinkLabel(), notification.getDocumentUrl(),
                 notification.getDocumentData() != null && notification.getDocumentData().length > 0,
-                notification.getDocumentName(), notification.getCreatedBy(), notification.getCreatedAt());
+                notification.getDocumentName(), notification.getDocumentContentType(), notification.getCreatedBy(),
+                notification.getCreatedAt());
     }
 
     private String normalize(String value) {
