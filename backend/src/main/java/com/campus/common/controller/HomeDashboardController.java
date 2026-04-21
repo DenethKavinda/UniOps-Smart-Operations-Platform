@@ -48,17 +48,17 @@ public class HomeDashboardController {
         List<HomeActivityResponse> activities = new ArrayList<>();
         bookingRepository.findTop5ByOrderByCreatedAtDesc().forEach((Booking booking)
                 -> activities.add(new HomeActivityResponse(
-                        booking.getStatus() != null && booking.getStatus().equalsIgnoreCase("CONFIRMED")
+                        booking.getStatus() != null && booking.getStatus().equalsIgnoreCase("APPROVED")
                         ? "booking-approved"
                         : booking.getStatus() != null && booking.getStatus().equalsIgnoreCase("PENDING")
                         ? "booking-pending"
                         : "booking-updated",
-                        booking.getStatus() != null && booking.getStatus().equalsIgnoreCase("CONFIRMED")
+                        booking.getStatus() != null && booking.getStatus().equalsIgnoreCase("APPROVED")
                         ? "Booking approved"
                         : booking.getStatus() != null && booking.getStatus().equalsIgnoreCase("PENDING")
                         ? "Booking pending"
                         : "Booking updated",
-                        booking.getTitle(),
+                        booking.getResourceName(),
                         booking.getCreatedAt())));
 
         maintenanceRepository.findTop5ByOrderByCreatedAtDesc().forEach((Maintenance maintenance)

@@ -11,7 +11,7 @@ const moduleCards = [
   {
     title: "Bookings",
     desc: "Track room and facility reservations.",
-    route: "/bookings",
+    route: "bookings",
     icon: CalendarIcon,
   },
   {

@@ -10,6 +10,7 @@ import Notifications from "./pages/Notifications";
 import PasswordRest from "./pages/PasswordRest";
 import Register from "./pages/Register";
 import UserProfile from "./pages/UserProfile";
+import Bookings from "./pages/Bookings";
 
 function App() {
   const [currentView, setCurrentView] = useState("login");
@@ -220,6 +221,15 @@ function App() {
           hasNewNotificationAlert={hasNewNotificationAlert}
           onOpenNotifications={openNotifications}
           onMarkNotificationsRead={handleMarkNotificationsRead}
+          onNavigate={setCurrentView}
+        />
+      )}
+      {currentView === "bookings" && currentUser && (
+        <Bookings
+          user={currentUser}
+          onBack={() =>
+            setCurrentView(currentUser?.role === "ADMIN" ? "admin" : "home")
+          }
         />
       )}
       {currentView === "admin-add-notifications" &&

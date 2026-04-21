@@ -1,6 +1,8 @@
 package com.campus.common.config;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 import org.springframework.boot.CommandLineRunner;
@@ -108,18 +110,41 @@ public class DataInitializer {
             return;
         }
 
+        LocalDate tomorrow = LocalDate.now().plusDays(1);
+        LocalDate dayAfterTomorrow = LocalDate.now().plusDays(2);
+        LocalDate yesterday = LocalDate.now().minusDays(1);
+
         bookingRepository.saveAll(List.of(
-                createBooking("Auditorium A", "CONFIRMED"),
-                createBooking("Lab 2", "PENDING"),
-                createBooking("Conference Hall", "CONFIRMED"),
-                createBooking("Sports Complex", "CANCELLED")));
+                createBooking("Auditorium A", 1L, "Auditorium A", "Kavindi Jayasuriya",
+                        "student1@uniops.edu", "Year-end ceremony", null, tomorrow, LocalTime.of(9, 0),
+                        LocalTime.of(11, 0), "APPROVED", null, LocalDateTime.now().minusDays(2)),
+                createBooking("Lab 2", 2L, "Lab 2", "Pasan Rodrigo", "student2@uniops.edu",
+                        "Group project session", null, dayAfterTomorrow, LocalTime.of(14, 0),
+                        LocalTime.of(16, 0), "PENDING", null, LocalDateTime.now().minusDays(2)),
+                createBooking("Conference Hall", 3L, "Conference Hall", "Tharindu Mendis",
+                        "student4@uniops.edu", "Department meeting", null, tomorrow, LocalTime.of(13, 0),
+                        LocalTime.of(15, 0), "APPROVED", null, LocalDateTime.now().minusDays(2)),
+                createBooking("Sports Complex", 4L, "Sports Complex", "Nethmi Perera",
+                        "student5@uniops.edu", "Sports event", null, yesterday, LocalTime.of(8, 0),
+                        LocalTime.of(10, 0), "CANCELLED", "Event postponed", LocalDateTime.now().minusDays(3))));
     }
 
-    private Booking createBooking(String title, String status) {
+    private Booking createBooking(String title, Long resourceId, String resourceName, String requestedBy,
+            String requestedByEmail, String purpose, Integer expectedAttendees, LocalDate bookingDate,
+            LocalTime startTime, LocalTime endTime, String status, String adminNote, LocalDateTime createdAt) {
         Booking booking = new Booking();
-        booking.setTitle(title);
+        booking.setResourceId(resourceId);
+        booking.setResourceName(resourceName);
+        booking.setRequestedBy(requestedBy);
+        booking.setRequestedByEmail(requestedByEmail);
+        booking.setPurpose(purpose);
+        booking.setExpectedAttendees(expectedAttendees);
+        booking.setBookingDate(bookingDate);
+        booking.setStartTime(startTime);
+        booking.setEndTime(endTime);
         booking.setStatus(status);
-        booking.setCreatedAt(LocalDateTime.now().minusDays(2));
+        booking.setAdminNote(adminNote);
+        booking.setCreatedAt(createdAt);
         return booking;
     }
 

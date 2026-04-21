@@ -121,6 +121,23 @@ function AdminDashboard({ user, onOpenAddNotifications, onOpenAnalytics }) {
     }
   };
 
+  const handleBookingAction = async (bookingId, newStatus) => {
+    setSavingId(bookingId);
+    try {
+      await api.put(`/api/bookings/${bookingId}/status`, {
+        status: newStatus,
+        adminNote: "",
+      });
+      await loadBookings();
+    } catch (err) {
+      setError(
+        err.response?.data?.message || "Unable to update booking status.",
+      );
+    } finally {
+      setSavingId(null);
+    }
+  };
+
   const openUserActionModal = (action, targetUser) => {
     setError("");
     setUserActionModal({ open: true, action, targetUser });
@@ -487,16 +504,20 @@ function AdminDashboard({ user, onOpenAddNotifications, onOpenAnalytics }) {
                     <table className="min-w-full border-separate border-spacing-y-3">
                       <thead>
                         <tr className="text-left text-xs uppercase tracking-[0.2em] text-slate-400">
-                          <th className="px-4 py-2">Title</th>
+                          <th className="px-4 py-2">Resource</th>
+                          <th className="px-4 py-2">Requested By</th>
+                          <th className="px-4 py-2">Date</th>
+                          <th className="px-4 py-2">Time</th>
+                          <th className="px-4 py-2">Purpose</th>
                           <th className="px-4 py-2">Status</th>
-                          <th className="px-4 py-2">Created Date</th>
+                          <th className="px-4 py-2">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
                         {loading ? (
                           <tr>
                             <td
-                              colSpan="3"
+                              colSpan="7"
                               className="px-4 py-8 text-center text-slate-300"
                             >
                               Loading bookings...
@@ -505,7 +526,7 @@ function AdminDashboard({ user, onOpenAddNotifications, onOpenAnalytics }) {
                         ) : bookings.length === 0 ? (
                           <tr>
                             <td
-                              colSpan="3"
+                              colSpan="7"
                               className="px-4 py-8 text-center text-slate-300"
                             >
                               No bookings found
@@ -519,24 +540,63 @@ function AdminDashboard({ user, onOpenAddNotifications, onOpenAnalytics }) {
                             >
                               <td className="rounded-l-2xl px-4 py-4">
                                 <p className="font-semibold text-white">
-                                  {item.title}
+                                  {item.resourceName}
                                 </p>
+                              </td>
+                              <td className="px-4 py-4 text-sm text-slate-300">
+                                {item.requestedBy}
+                              </td>
+                              <td className="px-4 py-4 text-sm text-slate-300">
+                                {new Date(item.bookingDate).toLocaleDateString()}
+                              </td>
+                              <td className="px-4 py-4 text-sm text-slate-300">
+                                {item.startTime} – {item.endTime}
+                              </td>
+                              <td className="px-4 py-4 text-sm text-slate-300">
+                                {item.purpose.length > 40
+                                  ? item.purpose.substring(0, 40) + "..."
+                                  : item.purpose}
                               </td>
                               <td className="px-4 py-4">
                                 <span
                                   className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${
-                                    item.status === "CONFIRMED"
+                                    item.status === "APPROVED"
                                       ? "bg-emerald-500/20 text-emerald-300"
-                                      : item.status === "CANCELLED"
+                                      : item.status === "REJECTED"
                                         ? "bg-rose-500/20 text-rose-300"
-                                        : "bg-yellow-500/20 text-yellow-300"
+                                        : item.status === "CANCELLED"
+                                          ? "bg-slate-500/20 text-slate-300"
+                                          : "bg-yellow-500/20 text-yellow-300"
                                   }`}
                                 >
                                   {item.status}
                                 </span>
                               </td>
-                              <td className="rounded-r-2xl px-4 py-4 text-sm text-slate-300">
-                                {new Date(item.createdAt).toLocaleDateString()}
+                              <td className="rounded-r-2xl px-4 py-4">
+                                {item.status === "PENDING" && (
+                                  <div className="flex gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handleBookingAction(item.id, "APPROVED")
+                                      }
+                                      className="rounded-lg bg-emerald-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-400 disabled:opacity-60 disabled:cursor-not-allowed"
+                                      disabled={savingId !== null}
+                                    >
+                                      Approve
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handleBookingAction(item.id, "REJECTED")
+                                      }
+                                      className="rounded-lg bg-rose-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-rose-400 disabled:opacity-60 disabled:cursor-not-allowed"
+                                      disabled={savingId !== null}
+                                    >
+                                      Reject
+                                    </button>
+                                  </div>
+                                )}
                               </td>
                             </tr>
                           ))
