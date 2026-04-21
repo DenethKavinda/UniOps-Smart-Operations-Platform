@@ -15,6 +15,27 @@ function AdminDashboard({ user }) {
   const [savingId, setSavingId] = useState(null);
   const [error, setError] = useState("");
 
+  const [assetItems, setAssetItems] = useState([]);
+  const [assetLoading, setAssetLoading] = useState(false);
+  const [assetError, setAssetError] = useState("");
+  const [assetFilters, setAssetFilters] = useState({
+    q: "",
+    type: "",
+    minCapacity: "",
+    location: "",
+    status: "",
+  });
+  const [assetForm, setAssetForm] = useState({
+    id: null,
+    name: "",
+    type: "",
+    capacity: "",
+    location: "",
+    status: "ACTIVE",
+    availabilityWindows: [],
+  });
+  const [assetSaving, setAssetSaving] = useState(false);
+
   const loadDashboard = async () => {
     setLoading(true);
     setError("");
@@ -38,6 +59,128 @@ function AdminDashboard({ user }) {
   useEffect(() => {
     loadDashboard();
   }, []);
+
+  const toBackendDateTime = (value) => {
+    if (!value) return null;
+    if (value.length === 16) return `${value}:00`;
+    return value;
+  };
+
+  const toDatetimeLocal = (value) => {
+    if (!value) return "";
+    return value.length >= 16 ? value.slice(0, 16) : value;
+  };
+
+  const loadAssets = async (nextFilters = assetFilters) => {
+    setAssetLoading(true);
+    setAssetError("");
+    try {
+      const params = {
+        q: nextFilters.q || undefined,
+        type: nextFilters.type || undefined,
+        minCapacity:
+          nextFilters.minCapacity === "" ? undefined : nextFilters.minCapacity,
+        location: nextFilters.location || undefined,
+        status: nextFilters.status || undefined,
+      };
+      const response = await api.get("/admin/assets", { params });
+      if (response.data?.success) {
+        setAssetItems(response.data.data || []);
+      } else {
+        setAssetError(response.data?.message || "Unable to load assets.");
+      }
+    } catch (err) {
+      setAssetError(err.response?.data?.message || "Unable to load assets.");
+    } finally {
+      setAssetLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeSection === "assets") {
+      loadAssets();
+    }
+  }, [activeSection]);
+
+  const resetAssetForm = () => {
+    setAssetForm({
+      id: null,
+      name: "",
+      type: "",
+      capacity: "",
+      location: "",
+      status: "ACTIVE",
+      availabilityWindows: [],
+    });
+  };
+
+  const startEditAsset = (asset) => {
+    setAssetError("");
+    setAssetForm({
+      id: asset.id,
+      name: asset.name || "",
+      type: asset.type || "",
+      capacity: asset.capacity ?? "",
+      location: asset.location || "",
+      status: asset.status || "ACTIVE",
+      availabilityWindows: (asset.availabilityWindows || []).map((w) => ({
+        startAt: toDatetimeLocal(w.startAt),
+        endAt: toDatetimeLocal(w.endAt),
+      })),
+    });
+  };
+
+  const submitAssetForm = async (e) => {
+    e.preventDefault();
+    setAssetSaving(true);
+    setAssetError("");
+
+    const payload = {
+      name: assetForm.name,
+      type: assetForm.type,
+      capacity: Number(assetForm.capacity),
+      location: assetForm.location,
+      status: assetForm.status,
+      availabilityWindows: assetForm.availabilityWindows
+        .filter((w) => w.startAt && w.endAt)
+        .map((w) => ({
+          startAt: toBackendDateTime(w.startAt),
+          endAt: toBackendDateTime(w.endAt),
+        })),
+    };
+
+    try {
+      if (assetForm.id) {
+        await api.put(`/admin/assets/${assetForm.id}`, payload);
+      } else {
+        await api.post("/admin/assets", payload);
+      }
+      await loadAssets();
+      await loadDashboard();
+      resetAssetForm();
+    } catch (err) {
+      setAssetError(err.response?.data?.message || "Unable to save asset.");
+    } finally {
+      setAssetSaving(false);
+    }
+  };
+
+  const deleteAsset = async (asset) => {
+    setAssetError("");
+    setAssetSaving(true);
+    try {
+      await api.delete(`/admin/assets/${asset.id}`);
+      await loadAssets();
+      await loadDashboard();
+      if (assetForm.id === asset.id) {
+        resetAssetForm();
+      }
+    } catch (err) {
+      setAssetError(err.response?.data?.message || "Unable to delete asset.");
+    } finally {
+      setAssetSaving(false);
+    }
+  };
 
   const users = dashboard?.users || [];
   const roleStats = dashboard?.roleStats || [];
@@ -418,7 +561,452 @@ function AdminDashboard({ user }) {
             </section>
           )}
 
-          {activeSection !== "users" && (
+          {activeSection === "assets" && (
+            <section className="rounded-3xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-cyan-950/10">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-white">
+                    Resource catalogue management
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-300">
+                    Add, edit, delete resources and set status/availability.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => loadAssets()}
+                  className="rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
+                >
+                  Refresh assets
+                </button>
+              </div>
+
+              {assetError && (
+                <div className="mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+                  {assetError}
+                </div>
+              )}
+
+              <form
+                onSubmit={submitAssetForm}
+                className="mt-6 rounded-2xl border border-slate-800 bg-slate-950/50 p-5"
+              >
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">
+                      {assetForm.id ? `Edit resource #${assetForm.id}` : "Add new resource"}
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-300">
+                      Required metadata: type, capacity, location, status.
+                    </p>
+                  </div>
+                  {assetForm.id && (
+                    <button
+                      type="button"
+                      onClick={resetAssetForm}
+                      className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-slate-800"
+                    >
+                      Cancel edit
+                    </button>
+                  )}
+                </div>
+
+                <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-200">
+                      Name
+                    </label>
+                    <input
+                      value={assetForm.name}
+                      onChange={(e) =>
+                        setAssetForm((prev) => ({ ...prev, name: e.target.value }))
+                      }
+                      className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-cyan-400"
+                      placeholder="Lecture Hall A"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-200">
+                      Type
+                    </label>
+                    <input
+                      value={assetForm.type}
+                      onChange={(e) =>
+                        setAssetForm((prev) => ({ ...prev, type: e.target.value }))
+                      }
+                      className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-cyan-400"
+                      placeholder="LECTURE_HALL / LAB / MEETING_ROOM / EQUIPMENT"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-200">
+                      Capacity
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={assetForm.capacity}
+                      onChange={(e) =>
+                        setAssetForm((prev) => ({
+                          ...prev,
+                          capacity: e.target.value,
+                        }))
+                      }
+                      className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-cyan-400"
+                      placeholder="0"
+                      required
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="mb-1 block text-sm font-medium text-slate-200">
+                      Location
+                    </label>
+                    <input
+                      value={assetForm.location}
+                      onChange={(e) =>
+                        setAssetForm((prev) => ({
+                          ...prev,
+                          location: e.target.value,
+                        }))
+                      }
+                      className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-cyan-400"
+                      placeholder="Block A - Level 1"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-200">
+                      Status
+                    </label>
+                    <select
+                      value={assetForm.status}
+                      onChange={(e) =>
+                        setAssetForm((prev) => ({
+                          ...prev,
+                          status: e.target.value,
+                        }))
+                      }
+                      className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-cyan-400"
+                    >
+                      <option value="ACTIVE">ACTIVE</option>
+                      <option value="OUT_OF_SERVICE">OUT_OF_SERVICE</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="mt-5">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">
+                      Availability windows
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setAssetForm((prev) => ({
+                          ...prev,
+                          availabilityWindows: [
+                            ...(prev.availabilityWindows || []),
+                            { startAt: "", endAt: "" },
+                          ],
+                        }))
+                      }
+                      className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-slate-800"
+                    >
+                      Add window
+                    </button>
+                  </div>
+
+                  <div className="mt-3 space-y-3">
+                    {(assetForm.availabilityWindows || []).length === 0 ? (
+                      <p className="text-sm text-slate-400">
+                        No windows set. Resource is treated as always available
+                        when ACTIVE.
+                      </p>
+                    ) : (
+                      assetForm.availabilityWindows.map((w, idx) => (
+                        <div
+                          key={idx}
+                          className="grid gap-3 rounded-2xl border border-slate-800 bg-slate-950/60 p-4 md:grid-cols-[1fr_1fr_auto]"
+                        >
+                          <div>
+                            <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                              Start
+                            </label>
+                            <input
+                              type="datetime-local"
+                              value={w.startAt}
+                              onChange={(e) =>
+                                setAssetForm((prev) => {
+                                  const next = [...prev.availabilityWindows];
+                                  next[idx] = { ...next[idx], startAt: e.target.value };
+                                  return { ...prev, availabilityWindows: next };
+                                })
+                              }
+                              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-cyan-400"
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                              End
+                            </label>
+                            <input
+                              type="datetime-local"
+                              value={w.endAt}
+                              onChange={(e) =>
+                                setAssetForm((prev) => {
+                                  const next = [...prev.availabilityWindows];
+                                  next[idx] = { ...next[idx], endAt: e.target.value };
+                                  return { ...prev, availabilityWindows: next };
+                                })
+                              }
+                              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-cyan-400"
+                            />
+                          </div>
+                          <div className="flex items-end">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setAssetForm((prev) => ({
+                                  ...prev,
+                                  availabilityWindows: prev.availabilityWindows.filter(
+                                    (_, i) => i !== idx,
+                                  ),
+                                }))
+                              }
+                              className="rounded-lg bg-rose-500 px-3 py-2 text-sm font-semibold text-white transition hover:bg-rose-400"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+                  <button
+                    type="submit"
+                    disabled={assetSaving}
+                    className="rounded-xl bg-cyan-500 px-5 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    {assetSaving ? "Saving..." : assetForm.id ? "Save changes" : "Add resource"}
+                  </button>
+                </div>
+              </form>
+
+              <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-950/50 p-5">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">
+                      Search and filter
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-300">
+                      Filter by type, capacity, location, and status.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const cleared = {
+                        q: "",
+                        type: "",
+                        minCapacity: "",
+                        location: "",
+                        status: "",
+                      };
+                      setAssetFilters(cleared);
+                      loadAssets(cleared);
+                    }}
+                    className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-slate-800"
+                  >
+                    Clear filters
+                  </button>
+                </div>
+
+                <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+                  <input
+                    value={assetFilters.q}
+                    onChange={(e) =>
+                      setAssetFilters((prev) => ({ ...prev, q: e.target.value }))
+                    }
+                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-cyan-400"
+                    placeholder="Search by name"
+                  />
+                  <input
+                    value={assetFilters.type}
+                    onChange={(e) =>
+                      setAssetFilters((prev) => ({
+                        ...prev,
+                        type: e.target.value,
+                      }))
+                    }
+                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-cyan-400"
+                    placeholder="Type"
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    value={assetFilters.minCapacity}
+                    onChange={(e) =>
+                      setAssetFilters((prev) => ({
+                        ...prev,
+                        minCapacity: e.target.value,
+                      }))
+                    }
+                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-cyan-400"
+                    placeholder="Min capacity"
+                  />
+                  <input
+                    value={assetFilters.location}
+                    onChange={(e) =>
+                      setAssetFilters((prev) => ({
+                        ...prev,
+                        location: e.target.value,
+                      }))
+                    }
+                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-cyan-400"
+                    placeholder="Location"
+                  />
+                  <select
+                    value={assetFilters.status}
+                    onChange={(e) =>
+                      setAssetFilters((prev) => ({
+                        ...prev,
+                        status: e.target.value,
+                      }))
+                    }
+                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-cyan-400"
+                  >
+                    <option value="">Any status</option>
+                    <option value="ACTIVE">ACTIVE</option>
+                    <option value="OUT_OF_SERVICE">OUT_OF_SERVICE</option>
+                  </select>
+                </div>
+
+                <div className="mt-4 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => loadAssets(assetFilters)}
+                    className="rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
+                  >
+                    Search
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-6 overflow-x-auto">
+                <table className="min-w-full border-separate border-spacing-y-3">
+                  <thead>
+                    <tr className="text-left text-xs uppercase tracking-[0.2em] text-slate-400">
+                      <th className="px-4 py-2">Resource</th>
+                      <th className="px-4 py-2">Type</th>
+                      <th className="px-4 py-2">Capacity</th>
+                      <th className="px-4 py-2">Location</th>
+                      <th className="px-4 py-2">Status</th>
+                      <th className="px-4 py-2">Available</th>
+                      <th className="px-4 py-2">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {assetLoading ? (
+                      <tr>
+                        <td
+                          colSpan="7"
+                          className="px-4 py-8 text-center text-slate-300"
+                        >
+                          Loading assets...
+                        </td>
+                      </tr>
+                    ) : assetItems.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan="7"
+                          className="px-4 py-8 text-center text-slate-300"
+                        >
+                          No resources found.
+                        </td>
+                      </tr>
+                    ) : (
+                      assetItems.map((asset) => (
+                        <tr
+                          key={asset.id}
+                          className="rounded-2xl bg-slate-950/60"
+                        >
+                          <td className="rounded-l-2xl px-4 py-4">
+                            <p className="font-semibold text-white">
+                              {asset.name}
+                            </p>
+                            <p className="text-sm text-slate-400">
+                              ID: {asset.id}
+                            </p>
+                          </td>
+                          <td className="px-4 py-4 text-sm text-slate-200">
+                            {asset.type}
+                          </td>
+                          <td className="px-4 py-4 text-sm text-slate-200">
+                            {asset.capacity}
+                          </td>
+                          <td className="px-4 py-4 text-sm text-slate-200">
+                            {asset.location}
+                          </td>
+                          <td className="px-4 py-4">
+                            <span
+                              className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${
+                                asset.status === "ACTIVE"
+                                  ? "bg-emerald-500/20 text-emerald-300"
+                                  : "bg-rose-500/20 text-rose-300"
+                              }`}
+                            >
+                              {asset.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4">
+                            <span
+                              className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${
+                                asset.availableNow
+                                  ? "bg-cyan-500/20 text-cyan-300"
+                                  : "bg-slate-800 text-slate-200"
+                              }`}
+                            >
+                              {asset.availableNow ? "Available" : "Not now"}
+                            </span>
+                          </td>
+                          <td className="rounded-r-2xl px-4 py-4">
+                            <div className="flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                onClick={() => startEditAsset(asset)}
+                                className="rounded-lg bg-slate-800 px-3 py-2 text-sm font-semibold text-slate-100 transition hover:bg-slate-700"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => deleteAsset(asset)}
+                                disabled={assetSaving}
+                                className="rounded-lg bg-rose-500 px-3 py-2 text-sm font-semibold text-white transition hover:bg-rose-400 disabled:cursor-not-allowed disabled:opacity-70"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
+
+          {activeSection !== "users" && activeSection !== "assets" && (
             <section className="rounded-3xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-cyan-950/10">
               <h2 className="text-xl font-bold text-white">
                 {

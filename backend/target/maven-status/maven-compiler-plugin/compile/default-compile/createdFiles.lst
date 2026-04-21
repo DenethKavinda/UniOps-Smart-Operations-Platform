@@ -3,7 +3,6 @@ com\campus\asset\AssetRepository.class
 com\campus\booking\BookingRepository.class
 com\campus\user\dto\RegisterRequest.class
 com\campus\user\dto\AuthResponse.class
-com\campus\common\config\DataInitializer.class
 com\campus\user\dto\UpdateRoleRequest.class
 com\campus\config\AppConfig.class
 com\campus\CampusApplication.class

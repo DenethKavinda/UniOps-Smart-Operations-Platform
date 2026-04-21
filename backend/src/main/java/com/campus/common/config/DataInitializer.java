@@ -10,6 +10,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.campus.asset.Asset;
 import com.campus.asset.AssetRepository;
+import com.campus.asset.AssetStatus;
 import com.campus.booking.Booking;
 import com.campus.booking.BookingRepository;
 import com.campus.maintenance.Maintenance;
@@ -143,20 +144,63 @@ public class DataInitializer {
     }
 
     private void seedAssets(AssetRepository assetRepository) {
-        if (assetRepository.count() > 0) {
+        if (assetRepository.count() == 0) {
+            assetRepository.saveAll(List.of(
+                    createAsset("Lecture Hall A", "LECTURE_HALL", 180, "Block A - Level 1",
+                            AssetStatus.ACTIVE.name()),
+                    createAsset("Computer Lab 2", "LAB", 45, "Engineering Building - Level 2",
+                            AssetStatus.ACTIVE.name()),
+                    createAsset("Meeting Room Omega", "MEETING_ROOM", 12, "Admin Building - Level 3",
+                            AssetStatus.ACTIVE.name()),
+                    createAsset("Projector Kit 01", "EQUIPMENT", 0, "AV Store - Ground Floor",
+                            AssetStatus.OUT_OF_SERVICE.name())));
             return;
         }
 
-        assetRepository.saveAll(List.of(
-                createAsset("Laptop Fleet", "IN_USE"),
-                createAsset("Projectors", "AVAILABLE"),
-                createAsset("Smart Boards", "MAINTENANCE"),
-                createAsset("Lab Tablets", "IN_USE")));
+        boolean changed = false;
+        List<Asset> existing = assetRepository.findAll();
+        for (Asset asset : existing) {
+            if (asset.getType() == null || asset.getType().isBlank()) {
+                asset.setType("EQUIPMENT");
+                changed = true;
+            }
+            if (asset.getCapacity() == null) {
+                asset.setCapacity(0);
+                changed = true;
+            }
+            if (asset.getLocation() == null || asset.getLocation().isBlank()) {
+                asset.setLocation("Unknown");
+                changed = true;
+            }
+
+            String status = asset.getStatus();
+            if (status == null || status.isBlank()) {
+                asset.setStatus(AssetStatus.ACTIVE.name());
+                changed = true;
+            } else {
+                String normalized = status.trim().toUpperCase();
+                if (!normalized.equals(AssetStatus.ACTIVE.name())
+                        && !normalized.equals(AssetStatus.OUT_OF_SERVICE.name())) {
+                    asset.setStatus(AssetStatus.ACTIVE.name());
+                    changed = true;
+                } else if (!normalized.equals(asset.getStatus())) {
+                    asset.setStatus(normalized);
+                    changed = true;
+                }
+            }
+        }
+
+        if (changed) {
+            assetRepository.saveAll(existing);
+        }
     }
 
-    private Asset createAsset(String name, String status) {
+    private Asset createAsset(String name, String type, int capacity, String location, String status) {
         Asset asset = new Asset();
         asset.setName(name);
+        asset.setType(type);
+        asset.setCapacity(capacity);
+        asset.setLocation(location);
         asset.setStatus(status);
         asset.setCreatedAt(LocalDateTime.now().minusDays(4));
         return asset;
