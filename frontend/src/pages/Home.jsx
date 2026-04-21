@@ -4,7 +4,7 @@ import api from "../api/axiosConfig";
 const moduleCards = [
   {
     title: "Users",
-    desc: "Open the student guide and review your profile details.",
+    desc: "Browse campus member profiles and the university guide.",
     route: "/users",
     icon: UsersIcon,
   },
@@ -242,7 +242,12 @@ function Home({
 
   const navigateTo = (route) => {
     if (typeof onNavigate === "function") {
-      onNavigate(route);
+      const normalized = String(route || "").replace(/^\/+/, "");
+      if (normalized === "users") {
+        onNavigate("users");
+        return;
+      }
+      window.location.assign(route);
       return;
     }
 

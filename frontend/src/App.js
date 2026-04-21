@@ -255,7 +255,15 @@ function App() {
           hasNewNotificationAlert={hasNewNotificationAlert}
           onOpenNotifications={openNotifications}
           onMarkNotificationsRead={handleMarkNotificationsRead}
-          onNavigate={handleHomeNavigate}
+          onNavigate={setCurrentView}
+        />
+      )}
+      {currentView === "users" && currentUser && (
+        <Users
+          user={currentUser}
+          onBack={() =>
+            setCurrentView(currentUser?.role === "ADMIN" ? "admin" : "home")
+          }
         />
       )}
       {currentView === "admin-add-notifications" &&
