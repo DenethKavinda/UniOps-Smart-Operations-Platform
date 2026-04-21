@@ -214,6 +214,17 @@ function App() {
     await markNotificationsAsRead(currentUser);
   };
 
+  const handleHomeNavigate = (route) => {
+    const normalizedRoute = String(route || "").replace(/^\/+/, "");
+
+    if (normalizedRoute === "users") {
+      setCurrentView("users");
+      return;
+    }
+
+    window.location.assign(route);
+  };
+
   return (
     <div className="min-h-screen bg-transparent">
       <Navbar
@@ -288,6 +299,14 @@ function App() {
       )}
       {currentView === "password-reset" && (
         <PasswordRest onBackToLogin={() => setCurrentView("login")} />
+      )}
+      {currentView === "users" && currentUser && (
+        <Users
+          user={currentUser}
+          onBack={() =>
+            setCurrentView(currentUser?.role === "ADMIN" ? "admin" : "home")
+          }
+        />
       )}
       {currentView === "profile" && currentUser && (
         <UserProfile
