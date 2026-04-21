@@ -29,6 +29,7 @@ import com.campus.user.dto.ResetPasswordRequest;
 import com.campus.user.dto.RoleStatsResponse;
 import com.campus.user.dto.UpdateProfileRequest;
 import com.campus.user.dto.UpdateRoleRequest;
+import com.campus.user.dto.UserDirectoryResponse;
 import com.campus.user.dto.UserProfileResponse;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
@@ -203,6 +204,14 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public List<UserDirectoryResponse> getUserDirectory() {
+        return userRepository.findAll().stream()
+                .sorted(Comparator.comparing(User::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
+                .map(this::toUserDirectoryResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public AdminUserResponse updateUserRole(Long userId, UpdateRoleRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found."));
@@ -319,6 +328,13 @@ public class UserServiceImpl implements UserService {
     private AdminUserResponse toAdminUserResponse(User user) {
         return new AdminUserResponse(user.getId(), user.getName(), user.getEmail(), user.getRole(), user.isBlocked(),
                 user.getLoginCount(), user.getLastLoginAt(), user.getCreatedAt());
+    }
+
+    private UserDirectoryResponse toUserDirectoryResponse(User user) {
+        return new UserDirectoryResponse(user.getId(), user.getName(), user.getEmail(), user.getRole(),
+                user.isBlocked(), user.getLoginCount(), user.getLastLoginAt(), user.getCreatedAt(),
+                user.getProfileImageUrl(), user.getAddress(), user.getMobileNumber(), user.getDepartment(),
+                user.getBio());
     }
 
     private LoginChartPointResponse toLoginChartPoint(User user) {
