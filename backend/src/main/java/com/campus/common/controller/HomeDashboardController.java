@@ -39,7 +39,7 @@ public class HomeDashboardController {
         long totalResources = assetRepository.count();
         long availableResources = assetRepository.countByStatusIgnoreCase("AVAILABLE");
         long busyResources = Math.max(0, totalResources - availableResources);
-        long activeBookings = bookingRepository.countByStatusIgnoreCase("CONFIRMED");
+        long activeBookings = bookingRepository.countByStatusIgnoreCase("APPROVED");
         long pendingBookings = bookingRepository.countByStatusIgnoreCase("PENDING");
         long openTickets = maintenanceRepository.countByStatusIgnoreCase("OPEN");
         long inProgressTickets = maintenanceRepository.countByStatusIgnoreCase("IN_PROGRESS");

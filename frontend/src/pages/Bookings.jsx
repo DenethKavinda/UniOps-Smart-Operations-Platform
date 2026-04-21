@@ -19,7 +19,7 @@ function Bookings({ user, onBack }) {
     setLoading(true);
     setError("");
     try {
-      const response = await api.get(`/api/bookings/my?email=${user.email}`);
+      const response = await api.get(`/bookings/my?email=${user.email}`);
       if (response.data?.success) {
         setBookings(response.data.data || []);
       } else {
@@ -72,7 +72,7 @@ function Bookings({ user, onBack }) {
 
     setLoading(true);
     try {
-      const response = await api.post("/api/bookings", {
+      const response = await api.post("/bookings", {
         resourceId: 1,
         resourceName: formData.resourceName,
         requestedBy: user.name,

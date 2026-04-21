@@ -124,7 +124,7 @@ function AdminDashboard({ user, onOpenAddNotifications, onOpenAnalytics }) {
   const handleBookingAction = async (bookingId, newStatus) => {
     setSavingId(bookingId);
     try {
-      await api.put(`/api/bookings/${bookingId}/status`, {
+      await api.put(`/bookings/${bookingId}/status`, {
         status: newStatus,
         adminNote: "",
       });
