@@ -5,6 +5,7 @@ import Analytics from "./pages/Analytics";
 import api from "./api/axiosConfig";
 import AddNotifications from "./pages/AddNotifications";
 import Home from "./pages/Home";
+import IncidentTickets from "./pages/IncidentTickets";
 import Login from "./pages/Login";
 import Notifications from "./pages/Notifications";
 import PasswordRest from "./pages/PasswordRest";
@@ -208,6 +209,7 @@ function App() {
             setCurrentView("admin-add-notifications")
           }
           onOpenAnalytics={() => setCurrentView("analytics")}
+          onOpenIncidents={() => setCurrentView("incidents")}
         />
       )}
       {currentView === "analytics" && currentUser?.role === "ADMIN" && (
@@ -220,6 +222,15 @@ function App() {
           hasNewNotificationAlert={hasNewNotificationAlert}
           onOpenNotifications={openNotifications}
           onMarkNotificationsRead={handleMarkNotificationsRead}
+          onNavigate={setCurrentView}
+        />
+      )}
+      {currentView === "incidents" && currentUser && (
+        <IncidentTickets
+          user={currentUser}
+          onBack={() =>
+            setCurrentView(currentUser?.role === "ADMIN" ? "admin" : "home")
+          }
         />
       )}
       {currentView === "admin-add-notifications" &&
