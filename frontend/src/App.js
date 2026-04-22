@@ -4,6 +4,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import Resources from "./pages/Resources";
 
 function App() {
   const [currentView, setCurrentView] = useState("login");
@@ -39,12 +40,16 @@ function App() {
     setCurrentView("login");
   };
 
+  const handleNavigate = (nextView) => {
+    setCurrentView(nextView);
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <Navbar
         isAuthenticated={Boolean(currentUser)}
         currentUser={currentUser}
-        onNavigate={setCurrentView}
+        onNavigate={handleNavigate}
         onLogout={handleLogout}
       />
 
@@ -52,6 +57,9 @@ function App() {
         <AdminDashboard user={currentUser} />
       )}
       {currentView === "home" && currentUser && <Home user={currentUser} />}
+      {currentView === "resources" && currentUser && currentUser?.role !== "ADMIN" && (
+        <Resources user={currentUser} />
+      )}
       {currentView === "login" && (
         <Login
           onLoginSuccess={handleLoginSuccess}

@@ -36,6 +36,16 @@ function Navbar({ isAuthenticated, currentUser, onNavigate, onLogout }) {
             </button>
           )}
 
+          {isAuthenticated && !isAdmin && (
+            <button
+              type="button"
+              onClick={() => onNavigate("resources")}
+              className="rounded-md px-3 py-1.5 text-slate-300 transition hover:bg-slate-800 hover:text-white"
+            >
+              Resources
+            </button>
+          )}
+
           {!isAuthenticated && (
             <button
               type="button"
