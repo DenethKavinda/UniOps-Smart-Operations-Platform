@@ -6,6 +6,7 @@ function Resources({ user }) {
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [formErrors, setFormErrors] = useState({});
   const [filters, setFilters] = useState({
     q: "",
     type: "",
@@ -13,6 +14,29 @@ function Resources({ user }) {
     location: "",
     status: "",
   });
+
+  const validateFilters = (nextFilters) => {
+    const errors = {};
+
+    const sanitized = {
+      ...nextFilters,
+      q: (nextFilters.q ?? "").trim().slice(0, 80),
+      type: (nextFilters.type ?? "").trim().slice(0, 40),
+      location: (nextFilters.location ?? "").trim().slice(0, 60),
+      status: nextFilters.status ?? "",
+      minCapacity: nextFilters.minCapacity ?? "",
+    };
+
+    if (sanitized.minCapacity !== "") {
+      const asNumber = Number(sanitized.minCapacity);
+      const isInteger = Number.isInteger(asNumber);
+      if (!Number.isFinite(asNumber) || !isInteger || asNumber < 0) {
+        errors.minCapacity = "Minimum capacity must be a non-negative whole number.";
+      }
+    }
+
+    return { sanitized, errors, isValid: Object.keys(errors).length === 0 };
+  };
 
   const loadAssets = async (nextFilters = filters) => {
     setLoading(true);
@@ -131,13 +155,20 @@ function Resources({ user }) {
                 type="number"
                 min="0"
                 value={filters.minCapacity}
-                onChange={(e) =>
+                onChange={(e) => {
                   setFilters((prev) => ({
                     ...prev,
                     minCapacity: e.target.value,
-                  }))
-                }
-                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none ring-cyan-400/60 transition focus:ring"
+                  }));
+                  if (formErrors.minCapacity) {
+                    setFormErrors((prev) => ({ ...prev, minCapacity: undefined }));
+                  }
+                }}
+                className={`w-full rounded-lg border bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none ring-cyan-400/60 transition focus:ring ${
+                  formErrors.minCapacity
+                    ? "border-rose-500/60"
+                    : "border-slate-700"
+                }`}
                 placeholder="Min capacity"
               />
               <input
@@ -164,6 +195,12 @@ function Resources({ user }) {
               </select>
             </div>
 
+            {formErrors.minCapacity && (
+              <p className="mt-3 text-sm text-rose-200">
+                {formErrors.minCapacity}
+              </p>
+            )}
+
             <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:justify-end">
               <button
                 type="button"
@@ -176,6 +213,7 @@ function Resources({ user }) {
                     status: "",
                   };
                   setFilters(cleared);
+                  setFormErrors({});
                   loadAssets(cleared);
                 }}
                 className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-slate-800"
@@ -184,7 +222,13 @@ function Resources({ user }) {
               </button>
               <button
                 type="button"
-                onClick={() => loadAssets(filters)}
+                onClick={() => {
+                  const { sanitized, errors, isValid } = validateFilters(filters);
+                  setFilters((prev) => ({ ...prev, ...sanitized }));
+                  setFormErrors(errors);
+                  if (!isValid) return;
+                  loadAssets(sanitized);
+                }}
                 className="rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
               >
                 Search
