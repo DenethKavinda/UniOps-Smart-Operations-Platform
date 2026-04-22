@@ -15,10 +15,10 @@ const moduleCards = [
     icon: CalendarIcon,
   },
   {
-    title: "Maintenance",
-    desc: "Create and resolve service requests.",
-    route: "/maintenance",
-    icon: WrenchIcon,
+    title: "Incidents",
+    desc: "Track and manage incident tickets.",
+    route: "incidents",
+    icon: TicketIcon,
   },
   {
     title: "Assets",
@@ -30,7 +30,7 @@ const moduleCards = [
 
 const quickActions = [
   { label: "New Booking", route: "/bookings/new", icon: PlusIcon },
-  { label: "Report Issue", route: "/maintenance/new", icon: AlertIcon },
+  { label: "Report Issue", route: "incidents", icon: AlertIcon },
   { label: "View Assets", route: "/assets", icon: ArchiveIcon },
   { label: "Open Calendar", route: "/calendar", icon: CalendarIcon },
 ];
@@ -242,12 +242,20 @@ function Home({
 
   const navigateTo = (route) => {
     if (typeof onNavigate === "function") {
-      const normalized = String(route || "").replace(/^\/+/, "");
-      if (normalized === "users") {
-        onNavigate("users");
+      const viewMap = {
+        incidents: "incidents",
+        "/maintenance": "incidents",
+        "/maintenance/new": "incidents",
+      };
+      if (viewMap[route]) {
+        onNavigate(viewMap[route]);
         return;
       }
-      window.location.assign(route);
+      if (typeof route === "string" && route.startsWith("/")) {
+        window.location.assign(route);
+        return;
+      }
+      onNavigate(route);
       return;
     }
 
@@ -447,11 +455,18 @@ function Home({
                       onClick={() => navigateTo("/bookings")}
                     />
                   )}
+                  {user?.role === "ADMIN" && (
+                    <ActionButton
+                      label="Manage Incidents"
+                      icon={TicketIcon}
+                      onClick={() => navigateTo("incidents")}
+                    />
+                  )}
                   {user?.role === "TECHNICIAN" && (
                     <ActionButton
                       label="My Tickets"
                       icon={TicketIcon}
-                      onClick={() => navigateTo("/maintenance")}
+                      onClick={() => navigateTo("incidents")}
                     />
                   )}
                 </div>
@@ -525,8 +540,11 @@ function Home({
                       No recent activity yet.
                     </div>
                   ) : (
-                    recentActivityItems.map((activity) => (
-                      <ActivityItem key={activity.title} {...activity} />
+                    recentActivityItems.map((activity, index) => (
+                      <ActivityItem
+                        key={`${activity.kind}-${activity.createdAt || "no-time"}-${activity.title}-${index}`}
+                        {...activity}
+                      />
                     ))
                   )}
                 </div>

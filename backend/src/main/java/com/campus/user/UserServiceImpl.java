@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
 import com.campus.asset.AssetRepository;
 import com.campus.booking.BookingRepository;
 import com.campus.common.exception.ResourceNotFoundException;
-import com.campus.maintenance.MaintenanceRepository;
+import com.campus.incident.IncidentTicketRepository;
 import com.campus.user.dto.AdminDashboardResponse;
 import com.campus.user.dto.AdminUserResponse;
 import com.campus.user.dto.AuthRequest;
@@ -41,18 +41,18 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final BookingRepository bookingRepository;
-    private final MaintenanceRepository maintenanceRepository;
+    private final IncidentTicketRepository incidentTicketRepository;
     private final AssetRepository assetRepository;
     private final PasswordEncoder passwordEncoder;
     private final GoogleIdTokenVerifier googleIdTokenVerifier;
     private final String googleClientId;
 
     public UserServiceImpl(UserRepository userRepository, BookingRepository bookingRepository,
-            MaintenanceRepository maintenanceRepository, AssetRepository assetRepository,
+            IncidentTicketRepository incidentTicketRepository, AssetRepository assetRepository,
             PasswordEncoder passwordEncoder, @Value("${google.client-id:}") String googleClientId) {
         this.userRepository = userRepository;
         this.bookingRepository = bookingRepository;
-        this.maintenanceRepository = maintenanceRepository;
+        this.incidentTicketRepository = incidentTicketRepository;
         this.assetRepository = assetRepository;
         this.passwordEncoder = passwordEncoder;
         this.googleClientId = googleClientId == null ? "" : googleClientId.trim();
@@ -191,7 +191,7 @@ public class UserServiceImpl implements UserService {
                 .collect(Collectors.toList());
 
         return new AdminDashboardResponse(totalUsers, adminUsers, studentUsers, blockedUsers, totalLogins,
-                bookingRepository.count(), maintenanceRepository.count(), assetRepository.count(), roleStats,
+                bookingRepository.count(), incidentTicketRepository.count(), assetRepository.count(), roleStats,
                 loginChart, getAllUsers());
     }
 

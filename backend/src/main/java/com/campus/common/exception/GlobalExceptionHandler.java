@@ -44,7 +44,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiResponse<Void>> handleDataIntegrity(DataIntegrityViolationException ex) {
         return ResponseEntity.badRequest()
-                .body(ApiResponse.error("Notification data is invalid or exceeds allowed limits."));
+                .body(ApiResponse.error("Submitted data is invalid or exceeds allowed limits."));
     }
 
     @ExceptionHandler(Exception.class)

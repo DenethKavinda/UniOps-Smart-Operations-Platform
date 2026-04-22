@@ -74,10 +74,10 @@ function Navbar({
           {isAuthenticated && (
             <button
               type="button"
-              onClick={() => onNavigate(isAdmin ? "admin" : "home")}
+              onClick={() => onNavigate("incidents")}
               className="rounded-md px-3 py-1.5 text-slate-300 transition hover:bg-slate-800 hover:text-white"
             >
-              {isAdmin ? "Users" : "Modules"}
+              Incident Tickets
             </button>
           )}
 

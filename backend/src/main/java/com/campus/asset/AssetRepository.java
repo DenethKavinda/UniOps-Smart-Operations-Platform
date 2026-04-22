@@ -8,5 +8,11 @@ public interface AssetRepository extends JpaRepository<Asset, Long> {
 
     long countByStatusIgnoreCase(String status);
 
+    List<Asset> findByStatusIgnoreCaseOrderByNameAsc(String status);
+
+    List<Asset> findByNameContainingIgnoreCaseOrderByNameAsc(String name);
+
+    List<Asset> findAllByOrderByNameAsc();
+
     List<Asset> findTop5ByOrderByCreatedAtDesc();
 }
