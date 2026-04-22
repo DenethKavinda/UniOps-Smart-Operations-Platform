@@ -10,9 +10,17 @@ import Login from "./pages/Login";
 import Notifications from "./pages/Notifications";
 import PasswordRest from "./pages/PasswordRest";
 import Register from "./pages/Register";
+import Users from "./pages/Users";
 import UserProfile from "./pages/UserProfile";
 
 function App() {
+  const [theme, setTheme] = useState(() => {
+    if (typeof window === "undefined") {
+      return "light";
+    }
+
+    return localStorage.getItem("uniops_theme") || "light";
+  });
   const [currentView, setCurrentView] = useState("login");
   const [currentUser, setCurrentUser] = useState(null);
   const [prefillCredentials, setPrefillCredentials] = useState({
@@ -22,6 +30,20 @@ function App() {
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [hasNewNotificationAlert, setHasNewNotificationAlert] = useState(false);
   const unreadCountRef = useRef(0);
+
+  const toggleTheme = () => {
+    setTheme((currentTheme) => (currentTheme === "light" ? "dark" : "light"));
+  };
+
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    document.documentElement.setAttribute("data-theme", theme);
+    document.documentElement.style.colorScheme = theme;
+    localStorage.setItem("uniops_theme", theme);
+  }, [theme]);
 
   const notificationsStreamUrl = useMemo(() => {
     const base = (api.defaults.baseURL || "http://localhost:8081/api").replace(
@@ -193,13 +215,26 @@ function App() {
     await markNotificationsAsRead(currentUser);
   };
 
+  const handleHomeNavigate = (route) => {
+    const normalizedRoute = String(route || "").replace(/^\/+/, "");
+
+    if (normalizedRoute === "users") {
+      setCurrentView("users");
+      return;
+    }
+
+    window.location.assign(route);
+  };
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen bg-transparent">
       <Navbar
         isAuthenticated={Boolean(currentUser)}
         currentUser={currentUser}
         onNavigate={setCurrentView}
         onLogout={handleLogout}
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
 
       {currentView === "admin" && currentUser?.role === "ADMIN" && (
@@ -266,6 +301,14 @@ function App() {
       )}
       {currentView === "password-reset" && (
         <PasswordRest onBackToLogin={() => setCurrentView("login")} />
+      )}
+      {currentView === "users" && currentUser && (
+        <Users
+          user={currentUser}
+          onBack={() =>
+            setCurrentView(currentUser?.role === "ADMIN" ? "admin" : "home")
+          }
+        />
       )}
       {currentView === "profile" && currentUser && (
         <UserProfile

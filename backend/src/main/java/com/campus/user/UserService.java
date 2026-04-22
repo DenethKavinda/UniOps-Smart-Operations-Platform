@@ -12,6 +12,7 @@ import com.campus.user.dto.RegisterRequest;
 import com.campus.user.dto.ResetPasswordRequest;
 import com.campus.user.dto.UpdateProfileRequest;
 import com.campus.user.dto.UpdateRoleRequest;
+import com.campus.user.dto.UserDirectoryResponse;
 import com.campus.user.dto.UserProfileResponse;
 
 public interface UserService {
@@ -27,6 +28,8 @@ public interface UserService {
     AdminDashboardResponse getDashboardOverview();
 
     List<AdminUserResponse> getAllUsers();
+
+    List<UserDirectoryResponse> getUserDirectory();
 
     AdminUserResponse updateUserRole(Long userId, UpdateRoleRequest request);
 

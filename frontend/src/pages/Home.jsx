@@ -4,7 +4,7 @@ import api from "../api/axiosConfig";
 const moduleCards = [
   {
     title: "Users",
-    desc: "Manage admin, staff, and student roles.",
+    desc: "Browse campus member profiles and the university guide.",
     route: "/users",
     icon: UsersIcon,
   },
