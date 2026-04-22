@@ -26,35 +26,35 @@ public class BookingServiceImpl implements BookingService {
         // Validate required fields
         if (request.getResourceId() == null || request.getResourceName() == null
                 || request.getResourceName().isBlank()) {
-            throw new IllegalArgumentException("Resource ID and name are required.");
+            throw new IllegalArgumentException("Resource information is required. Please select a valid resource.");
         }
         if (request.getRequestedBy() == null || request.getRequestedBy().isBlank()) {
-            throw new IllegalArgumentException("Requested by name is required.");
+            throw new IllegalArgumentException("Your name is required to create a booking.");
         }
         if (request.getRequestedByEmail() == null || request.getRequestedByEmail().isBlank()) {
-            throw new IllegalArgumentException("Requested by email is required.");
+            throw new IllegalArgumentException("Your email address is required to create a booking.");
         }
         if (request.getPurpose() == null || request.getPurpose().isBlank()) {
-            throw new IllegalArgumentException("Purpose is required.");
+            throw new IllegalArgumentException("Please describe the purpose of your booking.");
         }
         if (request.getBookingDate() == null) {
-            throw new IllegalArgumentException("Booking date is required.");
+            throw new IllegalArgumentException("Please select a booking date.");
         }
         if (request.getStartTime() == null) {
-            throw new IllegalArgumentException("Start time is required.");
+            throw new IllegalArgumentException("Please select a start time for your booking.");
         }
         if (request.getEndTime() == null) {
-            throw new IllegalArgumentException("End time is required.");
+            throw new IllegalArgumentException("Please select an end time for your booking.");
         }
 
         // Validate endTime is after startTime
         if (!request.getEndTime().isAfter(request.getStartTime())) {
-            throw new IllegalArgumentException("End time must be after start time.");
+            throw new IllegalArgumentException("End time must be after start time. Please check your time selection.");
         }
 
         // Validate bookingDate is not in the past
         if (request.getBookingDate().isBefore(LocalDate.now())) {
-            throw new IllegalArgumentException("Booking date cannot be in the past.");
+            throw new IllegalArgumentException("Booking date cannot be in the past. Please select today or a future date.");
         }
 
         // Check for conflicts
