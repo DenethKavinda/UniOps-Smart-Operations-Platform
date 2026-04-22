@@ -16,21 +16,22 @@ import com.campus.booking.BookingRepository;
 import com.campus.common.response.ApiResponse;
 import com.campus.common.response.HomeDashboardResponse;
 import com.campus.common.response.HomeDashboardResponse.HomeActivityResponse;
-import com.campus.maintenance.Maintenance;
-import com.campus.maintenance.MaintenanceRepository;
+import com.campus.incident.IncidentStatus;
+import com.campus.incident.IncidentTicket;
+import com.campus.incident.IncidentTicketRepository;
 
 @RestController
 @RequestMapping("/api")
 public class HomeDashboardController {
 
     private final BookingRepository bookingRepository;
-    private final MaintenanceRepository maintenanceRepository;
+    private final IncidentTicketRepository incidentTicketRepository;
     private final AssetRepository assetRepository;
 
     public HomeDashboardController(BookingRepository bookingRepository,
-            MaintenanceRepository maintenanceRepository, AssetRepository assetRepository) {
+            IncidentTicketRepository incidentTicketRepository, AssetRepository assetRepository) {
         this.bookingRepository = bookingRepository;
-        this.maintenanceRepository = maintenanceRepository;
+        this.incidentTicketRepository = incidentTicketRepository;
         this.assetRepository = assetRepository;
     }
 
@@ -41,8 +42,8 @@ public class HomeDashboardController {
         long busyResources = Math.max(0, totalResources - availableResources);
         long activeBookings = bookingRepository.countByStatusIgnoreCase("CONFIRMED");
         long pendingBookings = bookingRepository.countByStatusIgnoreCase("PENDING");
-        long openTickets = maintenanceRepository.countByStatusIgnoreCase("OPEN");
-        long inProgressTickets = maintenanceRepository.countByStatusIgnoreCase("IN_PROGRESS");
+        long openTickets = incidentTicketRepository.countByStatus(IncidentStatus.OPEN);
+        long inProgressTickets = incidentTicketRepository.countByStatus(IncidentStatus.IN_PROGRESS);
         long highPriorityTickets = openTickets + inProgressTickets;
 
         List<HomeActivityResponse> activities = new ArrayList<>();
@@ -61,22 +62,20 @@ public class HomeDashboardController {
                         booking.getTitle(),
                         booking.getCreatedAt())));
 
-        maintenanceRepository.findTop5ByOrderByCreatedAtDesc().forEach((Maintenance maintenance)
+        incidentTicketRepository.findTop5ByOrderByCreatedAtDesc().forEach((IncidentTicket incident)
                 -> activities.add(new HomeActivityResponse(
-                        maintenance.getStatus() != null && maintenance.getStatus().equalsIgnoreCase("OPEN")
+                        incident.getStatus() == IncidentStatus.OPEN
                         ? "ticket-created"
-                        : maintenance.getStatus() != null
-                        && maintenance.getStatus().equalsIgnoreCase("IN_PROGRESS")
+                        : incident.getStatus() == IncidentStatus.IN_PROGRESS
                         ? "technician-assigned"
                         : "ticket-resolved",
-                        maintenance.getStatus() != null && maintenance.getStatus().equalsIgnoreCase("OPEN")
+                        incident.getStatus() == IncidentStatus.OPEN
                         ? "Ticket created"
-                        : maintenance.getStatus() != null
-                        && maintenance.getStatus().equalsIgnoreCase("IN_PROGRESS")
+                        : incident.getStatus() == IncidentStatus.IN_PROGRESS
                         ? "Technician assigned"
                         : "Ticket resolved",
-                        maintenance.getTitle(),
-                        maintenance.getCreatedAt())));
+                        incident.getResourceName(),
+                        incident.getCreatedAt())));
 
         assetRepository.findTop5ByOrderByCreatedAtDesc().forEach((Asset asset)
                 -> activities.add(new HomeActivityResponse(
