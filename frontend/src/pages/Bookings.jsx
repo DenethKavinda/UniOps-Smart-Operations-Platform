@@ -110,6 +110,28 @@ function Bookings({ user, onBack }) {
   // Get today's date in YYYY-MM-DD format for min attribute
   const today = new Date().toISOString().split("T")[0];
 
+  const handleCancel = async (bookingId) => {
+    setError("");
+    setSuccess("");
+    setLoading(true);
+    try {
+      const response = await api.put(`/bookings/${bookingId}/status`, {
+        status: "CANCELLED",
+        adminNote: "Cancelled by student.",
+      });
+      if (response.data?.success) {
+        setSuccess("Booking cancelled successfully.");
+        await loadBookings();
+      } else {
+        setError(response.data?.message || "Unable to cancel booking.");
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || "Unable to cancel booking.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <main className="relative overflow-hidden">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.16),_transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(14,165,233,0.14),_transparent_35%)]" />
@@ -338,6 +360,16 @@ function Bookings({ user, onBack }) {
                         >
                           {booking.status}
                         </span>
+                        {booking.status === "APPROVED" && (
+                          <button
+                            type="button"
+                            onClick={() => handleCancel(booking.id)}
+                            disabled={loading}
+                            className="rounded-lg border border-rose-500/40 px-3 py-1 text-xs font-semibold text-rose-300 transition hover:bg-rose-500/10 disabled:opacity-60 disabled:cursor-not-allowed"
+                          >
+                            Cancel
+                          </button>
+                        )}
                         {booking.adminNote && (
                           <p className="text-right text-xs text-slate-400">
                             {booking.adminNote}
