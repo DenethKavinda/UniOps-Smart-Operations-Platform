@@ -7,6 +7,7 @@ import api from "../api/axiosConfig";
 const categories = [
   { id: "users", label: "Users" },
   { id: "bookings", label: "Bookings" },
+  { id: "incidents", label: "Incidents" },
   { id: "maintenance", label: "Maintenance" },
   { id: "assets", label: "Assets" },
   { id: "notifications", label: "Notifications" },
@@ -76,6 +77,7 @@ function Analytics({ user, onBack }) {
   const [activeCategory, setActiveCategory] = useState("users");
   const [dashboard, setDashboard] = useState(null);
   const [notifications, setNotifications] = useState([]);
+  const [incidents, setIncidents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -112,15 +114,93 @@ function Analytics({ user, onBack }) {
     [notifications],
   );
 
+  const incidentStatusCounts = useMemo(() => {
+    const counts = {
+      OPEN: 0,
+      IN_PROGRESS: 0,
+      RESOLVED: 0,
+      CLOSED: 0,
+      REJECTED: 0,
+    };
+    incidents.forEach((item) => {
+      const key = (item.status || "").toUpperCase();
+      if (counts[key] != null) {
+        counts[key] += 1;
+      }
+    });
+    return counts;
+  }, [incidents]);
+
+  const incidentPriorityCounts = useMemo(() => {
+    const counts = { LOW: 0, MEDIUM: 0, HIGH: 0, CRITICAL: 0 };
+    incidents.forEach((item) => {
+      const key = (item.priority || "").toUpperCase();
+      if (counts[key] != null) {
+        counts[key] += 1;
+      }
+    });
+    return counts;
+  }, [incidents]);
+
+  const incidentMonthlyTrend = useMemo(() => {
+    const months = [];
+    for (let i = 5; i >= 0; i -= 1) {
+      const date = new Date();
+      date.setMonth(date.getMonth() - i);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      months.push({
+        key,
+        label: date.toLocaleString(undefined, { month: "short" }),
+        count: 0,
+      });
+    }
+    incidents.forEach((item) => {
+      const created = new Date(item.createdAt);
+      if (Number.isNaN(created.getTime())) {
+        return;
+      }
+      const key = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, "0")}`;
+      const target = months.find((month) => month.key === key);
+      if (target) {
+        target.count += 1;
+      }
+    });
+    const peak = Math.max(1, ...months.map((month) => month.count));
+    return months.map((month) => ({
+      ...month,
+      barPercent: (month.count / peak) * 100,
+    }));
+  }, [incidents]);
+
+  const incidentResolutionHours = useMemo(() => {
+    const values = incidents
+      .map((item) => {
+        const created = new Date(item.createdAt);
+        const resolved = new Date(item.resolvedAt || item.closedAt);
+        if (Number.isNaN(created.getTime()) || Number.isNaN(resolved.getTime())) {
+          return null;
+        }
+        const diffHours = (resolved.getTime() - created.getTime()) / (1000 * 60 * 60);
+        return diffHours >= 0 ? diffHours : null;
+      })
+      .filter((value) => value != null);
+    if (values.length === 0) {
+      return 0;
+    }
+    const avg = values.reduce((sum, value) => sum + value, 0) / values.length;
+    return Number(avg.toFixed(1));
+  }, [incidents]);
+
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       setError("");
 
       try {
-        const [dashboardResponse, notificationsResponse] = await Promise.all([
+        const [dashboardResponse, notificationsResponse, incidentsResponse] = await Promise.all([
           api.get("/admin/dashboard"),
           api.get("/notifications"),
+          api.get("/incidents"),
         ]);
 
         if (dashboardResponse.data?.success) {
@@ -133,6 +213,9 @@ function Analytics({ user, onBack }) {
 
         if (notificationsResponse.data?.success) {
           setNotifications(notificationsResponse.data.data || []);
+        }
+        if (incidentsResponse.data?.success) {
+          setIncidents(incidentsResponse.data.data || []);
         }
       } catch (err) {
         setError(
@@ -344,6 +427,114 @@ function Analytics({ user, onBack }) {
     XLSX.writeFile(
       workbook,
       `uniops-notifications-report-${new Date().toISOString().slice(0, 10)}.xlsx`,
+    );
+  };
+
+  const exportIncidentsPdf = () => {
+    const doc = new jsPDF("p", "mm", "a4");
+    createPdfHeader(
+      doc,
+      "Incident Tickets Report",
+      `${user?.name || "Admin"} | ${new Date().toLocaleDateString()}`,
+    );
+
+    autoTable(doc, {
+      startY: 44,
+      theme: "grid",
+      styles: { fontSize: 10, cellPadding: 3 },
+      headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255] },
+      body: [
+        ["Total Tickets", incidents.length],
+        ["Open", incidentStatusCounts.OPEN],
+        ["In Progress", incidentStatusCounts.IN_PROGRESS],
+        ["Resolved", incidentStatusCounts.RESOLVED],
+        ["Closed", incidentStatusCounts.CLOSED],
+        ["Rejected", incidentStatusCounts.REJECTED],
+        ["Average Resolution Time (hrs)", incidentResolutionHours],
+      ],
+      margin: { left: 14, right: 14 },
+      columnStyles: {
+        0: {
+          fontStyle: "bold",
+          fillColor: [241, 245, 249],
+          textColor: [15, 23, 42],
+        },
+      },
+    });
+
+    const rows = incidents.map((item) => [
+      item.id || "-",
+      item.resourceName || "-",
+      item.priority || "-",
+      item.status || "-",
+      item.assignedToName || "-",
+      item.createdByName || "-",
+      formatDate(item.createdAt),
+    ]);
+
+    autoTable(doc, {
+      startY: doc.lastAutoTable.finalY + 10,
+      head: [["ID", "Resource", "Priority", "Status", "Assigned To", "Reporter", "Created"]],
+      body: rows,
+      styles: { fontSize: 8.5, cellPadding: 2.3 },
+      headStyles: { fillColor: [8, 47, 73], textColor: [255, 255, 255] },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      margin: { left: 14, right: 14 },
+      didDrawPage: () => {
+        createPdfFooter(doc);
+      },
+    });
+
+    createPdfFooter(doc);
+    doc.save(
+      `uniops-incidents-report-${new Date().toISOString().slice(0, 10)}.pdf`,
+    );
+  };
+
+  const exportIncidentsExcel = () => {
+    const summaryRows = [
+      { Metric: "Total Tickets", Value: incidents.length },
+      { Metric: "Open", Value: incidentStatusCounts.OPEN },
+      { Metric: "In Progress", Value: incidentStatusCounts.IN_PROGRESS },
+      { Metric: "Resolved", Value: incidentStatusCounts.RESOLVED },
+      { Metric: "Closed", Value: incidentStatusCounts.CLOSED },
+      { Metric: "Rejected", Value: incidentStatusCounts.REJECTED },
+      { Metric: "Avg Resolution Time (hrs)", Value: incidentResolutionHours },
+    ];
+
+    const details = incidents.map((item) => ({
+      ID: item.id || "-",
+      Resource: item.resourceName || "-",
+      Location: item.location || "-",
+      Category: item.category || "-",
+      Priority: item.priority || "-",
+      Status: item.status || "-",
+      Reporter: item.createdByName || "-",
+      "Reporter Email": item.createdByEmail || "-",
+      "Assigned To": item.assignedToName || "-",
+      "Assigned Email": item.assignedToEmail || "-",
+      "Comments Count": item.comments?.length || 0,
+      "Attachments Count": item.attachments?.length || 0,
+      "Created At": formatDate(item.createdAt),
+      "Resolved At": formatDate(item.resolvedAt),
+      "Closed At": formatDate(item.closedAt),
+    }));
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(
+      workbook,
+      XLSX.utils.json_to_sheet(summaryRows),
+      "Summary",
+    );
+    XLSX.utils.book_append_sheet(
+      workbook,
+      XLSX.utils.json_to_sheet(details),
+      "Incidents",
+    );
+
+    XLSX.writeFile(
+      workbook,
+      `uniops-incidents-report-${new Date().toISOString().slice(0, 10)}.xlsx`,
     );
   };
 
@@ -582,9 +773,194 @@ function Analytics({ user, onBack }) {
               </section>
             )}
 
-            {(activeCategory === "bookings" ||
-              activeCategory === "maintenance" ||
-              activeCategory === "assets") && (
+            {activeCategory === "incidents" && (
+              <section className="mt-6 grid gap-6">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <MetricCard
+                    label="Total Tickets"
+                    value={incidents.length}
+                    accent="cyan"
+                  />
+                  <MetricCard
+                    label="Open + In Progress"
+                    value={incidentStatusCounts.OPEN + incidentStatusCounts.IN_PROGRESS}
+                    accent="amber"
+                  />
+                  <MetricCard
+                    label="Resolved + Closed"
+                    value={incidentStatusCounts.RESOLVED + incidentStatusCounts.CLOSED}
+                    accent="emerald"
+                  />
+                  <MetricCard
+                    label="Avg Resolution (hrs)"
+                    value={incidentResolutionHours}
+                    accent="rose"
+                  />
+                </div>
+
+                <div className="grid gap-6 lg:grid-cols-2">
+                  <article className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-xl shadow-cyan-950/10">
+                    <h2 className="text-xl font-bold text-white">
+                      Ticket Status Distribution
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-300">
+                      Bar graph of incident workflow status.
+                    </p>
+                    <div className="mt-5 space-y-3">
+                      {Object.entries(incidentStatusCounts).map(([key, value]) => (
+                        <HorizontalBarRow
+                          key={key}
+                          label={key.replace("_", " ")}
+                          value={value}
+                          max={Math.max(1, ...Object.values(incidentStatusCounts))}
+                          colorClass={
+                            key === "OPEN"
+                              ? "from-rose-400 to-rose-500"
+                              : key === "IN_PROGRESS"
+                                ? "from-blue-400 to-blue-500"
+                                : key === "REJECTED"
+                                  ? "from-amber-400 to-amber-500"
+                                  : "from-emerald-400 to-emerald-500"
+                          }
+                        />
+                      ))}
+                    </div>
+                  </article>
+
+                  <article className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-xl shadow-cyan-950/10">
+                    <h2 className="text-xl font-bold text-white">
+                      Priority Breakdown
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-300">
+                      Chart by LOW / MEDIUM / HIGH / CRITICAL.
+                    </p>
+                    <div className="mt-5 space-y-3">
+                      {Object.entries(incidentPriorityCounts).map(([key, value]) => (
+                        <HorizontalBarRow
+                          key={key}
+                          label={key}
+                          value={value}
+                          max={Math.max(1, ...Object.values(incidentPriorityCounts))}
+                          colorClass={
+                            key === "CRITICAL"
+                              ? "from-rose-500 to-red-600"
+                              : key === "HIGH"
+                                ? "from-amber-400 to-orange-500"
+                                : key === "MEDIUM"
+                                  ? "from-cyan-400 to-cyan-500"
+                                  : "from-emerald-400 to-emerald-500"
+                          }
+                        />
+                      ))}
+                    </div>
+                  </article>
+                </div>
+
+                <article className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-xl shadow-cyan-950/10">
+                  <h2 className="text-xl font-bold text-white">
+                    Tickets Created (Last 6 Months)
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-300">
+                    Monthly incident creation trend chart.
+                  </p>
+                  <div className="mt-6 grid grid-cols-6 gap-3">
+                    {incidentMonthlyTrend.map((month) => (
+                      <div key={month.key} className="flex flex-col items-center">
+                        <div className="flex h-28 items-end">
+                          <div
+                            className="w-8 rounded-t-lg bg-gradient-to-t from-cyan-500 to-blue-500"
+                            style={{ height: `${Math.max(8, month.barPercent)}%` }}
+                            title={`${month.label}: ${month.count}`}
+                          />
+                        </div>
+                        <p className="mt-2 text-xs text-slate-300">{month.label}</p>
+                        <p className="text-xs font-semibold text-cyan-300">
+                          {month.count}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </article>
+
+                <article className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-xl shadow-cyan-950/10">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h2 className="text-xl font-bold text-white">
+                      Incident Report Generation
+                    </h2>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={exportIncidentsPdf}
+                        className="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
+                      >
+                        Export PDF
+                      </button>
+                      <button
+                        type="button"
+                        onClick={exportIncidentsExcel}
+                        className="rounded-lg border border-cyan-400/50 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-500/20"
+                      >
+                        Export Excel
+                      </button>
+                    </div>
+                  </div>
+                  <p className="mt-2 text-sm text-slate-300">
+                    Download incident analytics and detailed ticket data.
+                  </p>
+
+                  <div className="mt-5 overflow-x-auto">
+                    <table className="min-w-full border-separate border-spacing-y-2">
+                      <thead>
+                        <tr className="text-left text-xs uppercase tracking-[0.2em] text-slate-400">
+                          <th className="px-3 py-2">ID</th>
+                          <th className="px-3 py-2">Resource</th>
+                          <th className="px-3 py-2">Priority</th>
+                          <th className="px-3 py-2">Status</th>
+                          <th className="px-3 py-2">Assigned</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {incidents.length === 0 ? (
+                          <tr>
+                            <td
+                              colSpan="5"
+                              className="px-3 py-4 text-center text-slate-300"
+                            >
+                              No incident tickets available.
+                            </td>
+                          </tr>
+                        ) : (
+                          incidents.slice(0, 10).map((item) => (
+                            <tr
+                              key={item.id}
+                              className="rounded-2xl bg-slate-950/60"
+                            >
+                              <td className="rounded-l-2xl px-3 py-3 text-sm font-semibold text-white">
+                                #{item.id}
+                              </td>
+                              <td className="px-3 py-3 text-sm text-slate-300">
+                                {item.resourceName || "-"}
+                              </td>
+                              <td className="px-3 py-3 text-sm text-slate-300">
+                                {item.priority || "-"}
+                              </td>
+                              <td className="px-3 py-3 text-sm text-slate-300">
+                                {item.status || "-"}
+                              </td>
+                              <td className="rounded-r-2xl px-3 py-3 text-sm text-slate-300">
+                                {item.assignedToName || "-"}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </article>
+              </section>
+            )}
+
+            {(activeCategory === "bookings" || activeCategory === "assets") && (
               <section className="mt-6 rounded-3xl border border-amber-400/30 bg-amber-500/10 p-6 text-amber-100">
                 <h2 className="text-2xl font-black">
                   {activeCategory.toUpperCase()}
@@ -734,6 +1110,24 @@ function LegendRow({ label, value, tone }) {
         <span className="text-slate-200">{label}</span>
       </div>
       <span className="font-semibold text-white">{value}</span>
+    </div>
+  );
+}
+
+function HorizontalBarRow({ label, value, max, colorClass }) {
+  const percent = Math.round((value / Math.max(1, max)) * 100);
+  return (
+    <div>
+      <div className="mb-1 flex items-center justify-between text-sm text-slate-200">
+        <span>{label}</span>
+        <span className="font-semibold">{value}</span>
+      </div>
+      <div className="h-2.5 rounded-full bg-slate-800">
+        <div
+          className={`h-2.5 rounded-full bg-gradient-to-r ${colorClass}`}
+          style={{ width: `${Math.max(5, percent)}%` }}
+        />
+      </div>
     </div>
   );
 }

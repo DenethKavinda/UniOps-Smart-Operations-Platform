@@ -14,6 +14,10 @@ import com.campus.asset.Asset;
 import com.campus.asset.AssetRepository;
 import com.campus.booking.Booking;
 import com.campus.booking.BookingRepository;
+import com.campus.incident.IncidentPriority;
+import com.campus.incident.IncidentStatus;
+import com.campus.incident.IncidentTicket;
+import com.campus.incident.IncidentTicketRepository;
 import com.campus.maintenance.Maintenance;
 import com.campus.maintenance.MaintenanceRepository;
 import com.campus.user.User;
@@ -25,12 +29,14 @@ public class DataInitializer {
 
     @Bean
     CommandLineRunner seedData(UserRepository userRepository, BookingRepository bookingRepository,
-            MaintenanceRepository maintenanceRepository, AssetRepository assetRepository,
+            MaintenanceRepository maintenanceRepository, IncidentTicketRepository incidentTicketRepository,
+            AssetRepository assetRepository,
             PasswordEncoder passwordEncoder) {
         return args -> {
             seedUsers(userRepository, passwordEncoder);
             seedBookings(bookingRepository);
             seedMaintenance(maintenanceRepository);
+            seedIncidents(incidentTicketRepository);
             seedAssets(assetRepository);
         };
     }
@@ -185,5 +191,47 @@ public class DataInitializer {
         asset.setStatus(status);
         asset.setCreatedAt(LocalDateTime.now().minusDays(4));
         return asset;
+    }
+
+    private void seedIncidents(IncidentTicketRepository incidentTicketRepository) {
+        if (incidentTicketRepository.count() > 0) {
+            return;
+        }
+
+        incidentTicketRepository.saveAll(List.of(
+                createIncident("Projector A-12", "Lecture Hall 3", "ELECTRICAL",
+                        "Projector is flickering and shuts down every 5 minutes.",
+                        IncidentPriority.HIGH, IncidentStatus.OPEN),
+                createIncident("Main AC Unit", "Library 2nd Floor", "HVAC",
+                        "Cooling is inconsistent and there is a loud rattling noise.",
+                        IncidentPriority.MEDIUM, IncidentStatus.IN_PROGRESS),
+                createIncident("Exam Hall Screen", "Exam Hall", "DISPLAY",
+                        "Screen feed issue resolved after HDMI board replacement.",
+                        IncidentPriority.LOW, IncidentStatus.RESOLVED)));
+    }
+
+    private IncidentTicket createIncident(String resourceName, String location, String category, String description,
+            IncidentPriority priority, IncidentStatus status) {
+        IncidentTicket ticket = new IncidentTicket();
+        ticket.setResourceName(resourceName);
+        ticket.setLocation(location);
+        ticket.setCategory(category);
+        ticket.setDescription(description);
+        ticket.setPriority(priority);
+        ticket.setStatus(status);
+        ticket.setCreatedByName("System Seeder");
+        ticket.setCreatedByEmail("admin1@uniops.edu");
+        ticket.setPreferredContactName("Operations Desk");
+        ticket.setPreferredContactEmail("admin1@uniops.edu");
+        ticket.setPreferredContactPhone("+94-11-0000000");
+        ticket.setAssignedToName("Maintenance Team");
+        ticket.setAssignedToEmail("admin2@uniops.edu");
+        ticket.setCreatedAt(LocalDateTime.now().minusDays(2));
+        ticket.setUpdatedAt(LocalDateTime.now().minusDays(1));
+        if (status == IncidentStatus.RESOLVED) {
+            ticket.setResolutionNotes("Component replaced and tested.");
+            ticket.setResolvedAt(LocalDateTime.now().minusHours(8));
+        }
+        return ticket;
     }
 }

@@ -4,12 +4,17 @@ import api from "../api/axiosConfig";
 const sections = [
   { id: "users", label: "Users" },
   { id: "bookings", label: "Booking" },
-  { id: "maintenance", label: "Maintenance" },
+  { id: "incidents", label: "Incidents" },
   { id: "assets", label: "Assets" },
   { id: "notifications", label: "Notifications" },
 ];
 
-function AdminDashboard({ user, onOpenAddNotifications, onOpenAnalytics }) {
+function AdminDashboard({
+  user,
+  onOpenAddNotifications,
+  onOpenAnalytics,
+  onOpenIncidents,
+}) {
   const [dashboard, setDashboard] = useState(null);
   const [activeSection, setActiveSection] = useState("users");
   const [loading, setLoading] = useState(true);
@@ -21,7 +26,7 @@ function AdminDashboard({ user, onOpenAddNotifications, onOpenAnalytics }) {
   });
   const [error, setError] = useState("");
   const [bookings, setBookings] = useState([]);
-  const [maintenance, setMaintenance] = useState([]);
+  const [incidents, setIncidents] = useState([]);
   const [assets, setAssets] = useState([]);
   const [notificationSaving, setNotificationSaving] = useState(false);
   const [notificationForm, setNotificationForm] = useState({
@@ -69,14 +74,14 @@ function AdminDashboard({ user, onOpenAddNotifications, onOpenAnalytics }) {
     }
   };
 
-  const loadMaintenance = async () => {
+  const loadIncidents = async () => {
     try {
-      const response = await api.get("/maintenance");
+      const response = await api.get("/incidents");
       if (response.data?.success) {
-        setMaintenance(response.data.data);
+        setIncidents(response.data.data);
       }
     } catch (err) {
-      setError("Unable to load maintenance records.");
+      setError("Unable to load incident records.");
     }
   };
 
@@ -94,8 +99,8 @@ function AdminDashboard({ user, onOpenAddNotifications, onOpenAnalytics }) {
   useEffect(() => {
     if (activeSection === "bookings" && bookings.length === 0) {
       loadBookings();
-    } else if (activeSection === "maintenance" && maintenance.length === 0) {
-      loadMaintenance();
+    } else if (activeSection === "incidents" && incidents.length === 0) {
+      loadIncidents();
     } else if (activeSection === "assets" && assets.length === 0) {
       loadAssets();
     }
@@ -259,9 +264,9 @@ function AdminDashboard({ user, onOpenAddNotifications, onOpenAnalytics }) {
       note: "Reservation records loaded",
     },
     {
-      title: "Maintenance",
+      title: "Incidents",
       value: dashboard?.maintenanceCount ?? 0,
-      note: "Service requests tracked",
+      note: "Ticket lifecycle tracked",
     },
     {
       title: "Assets",
@@ -331,6 +336,33 @@ function AdminDashboard({ user, onOpenAddNotifications, onOpenAnalytics }) {
         </aside>
 
         <div className="min-w-0 flex-1 space-y-6">
+          <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {moduleCards.map((card) => (
+              <button
+                key={card.title}
+                type="button"
+                onClick={() =>
+                  setActiveSection(
+                    card.title === "Users"
+                      ? "users"
+                      : card.title === "Booking"
+                        ? "bookings"
+                        : card.title === "Incidents"
+                          ? "incidents"
+                          : "assets",
+                  )
+                }
+                className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 text-left transition hover:border-cyan-400/60 hover:bg-slate-800"
+              >
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300">
+                  {card.title}
+                </p>
+                <p className="mt-2 text-3xl font-black text-white">{card.value}</p>
+                <p className="mt-1 text-sm text-slate-300">{card.note}</p>
+              </button>
+            ))}
+          </section>
+
           {activeSection === "users" && (
             <section className="rounded-3xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-cyan-950/10">
               <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
@@ -620,81 +652,101 @@ function AdminDashboard({ user, onOpenAddNotifications, onOpenAnalytics }) {
                 </>
               )}
 
-              {activeSection === "maintenance" && (
+              {activeSection === "incidents" && (
                 <>
                   <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                     <div>
                       <h2 className="text-3xl font-bold text-white">
-                        Maintenance Management
+                        Incident Ticketing
                       </h2>
                       <p className="mt-2 text-sm text-slate-300">
-                        Track maintenance requests and status.{" "}
-                        {maintenance.length} total requests
+                        OPEN → IN_PROGRESS → RESOLVED → CLOSED or REJECTED by
+                        admin. {incidents.length} total tickets.
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={loadMaintenance}
-                      className="rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
-                    >
-                      Refresh
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={loadIncidents}
+                        className="rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
+                      >
+                        Refresh
+                      </button>
+                      <button
+                        type="button"
+                        onClick={onOpenIncidents}
+                        className="rounded-xl border border-cyan-400/50 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-500/20"
+                      >
+                        Open Incident Workspace
+                      </button>
+                    </div>
                   </div>
 
                   <div className="mt-6 overflow-x-auto">
                     <table className="min-w-full border-separate border-spacing-y-3">
                       <thead>
                         <tr className="text-left text-xs uppercase tracking-[0.2em] text-slate-400">
-                          <th className="px-4 py-2">Title</th>
+                          <th className="px-4 py-2">Resource</th>
+                          <th className="px-4 py-2">Location</th>
+                          <th className="px-4 py-2">Priority</th>
                           <th className="px-4 py-2">Status</th>
-                          <th className="px-4 py-2">Created Date</th>
+                          <th className="px-4 py-2">Assigned To</th>
                         </tr>
                       </thead>
                       <tbody>
                         {loading ? (
                           <tr>
                             <td
-                              colSpan="3"
+                              colSpan="5"
                               className="px-4 py-8 text-center text-slate-300"
                             >
-                              Loading maintenance requests...
+                              Loading incident tickets...
                             </td>
                           </tr>
-                        ) : maintenance.length === 0 ? (
+                        ) : incidents.length === 0 ? (
                           <tr>
                             <td
-                              colSpan="3"
+                              colSpan="5"
                               className="px-4 py-8 text-center text-slate-300"
                             >
-                              No maintenance requests found
+                              No incident tickets found
                             </td>
                           </tr>
                         ) : (
-                          maintenance.map((item) => (
+                          incidents.map((item) => (
                             <tr
                               key={item.id}
                               className="rounded-2xl bg-slate-950/60"
                             >
                               <td className="rounded-l-2xl px-4 py-4">
                                 <p className="font-semibold text-white">
-                                  {item.title}
+                                  #{item.id} {item.resourceName}
                                 </p>
+                              </td>
+                              <td className="px-4 py-4 text-sm text-slate-300">
+                                {item.location}
+                              </td>
+                              <td className="px-4 py-4 text-sm text-slate-300">
+                                {item.priority}
                               </td>
                               <td className="px-4 py-4">
                                 <span
                                   className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${
-                                    item.status === "RESOLVED"
+                                    item.status === "RESOLVED" ||
+                                    item.status === "CLOSED"
                                       ? "bg-emerald-500/20 text-emerald-300"
-                                      : item.status === "PENDING"
-                                        ? "bg-yellow-500/20 text-yellow-300"
-                                        : "bg-blue-500/20 text-blue-300"
+                                      : item.status === "REJECTED"
+                                        ? "bg-amber-500/20 text-amber-300"
+                                        : item.status === "OPEN"
+                                          ? "bg-rose-500/20 text-rose-300"
+                                          : "bg-blue-500/20 text-blue-300"
                                   }`}
                                 >
                                   {item.status}
                                 </span>
                               </td>
                               <td className="rounded-r-2xl px-4 py-4 text-sm text-slate-300">
-                                {new Date(item.createdAt).toLocaleDateString()}
+                                {item.assignedToName || "-"}
                               </td>
                             </tr>
                           ))

@@ -1,9 +1,17 @@
-function Navbar({ isAuthenticated, currentUser, onNavigate, onLogout }) {
+function Navbar({
+  isAuthenticated,
+  currentUser,
+  onNavigate,
+  onLogout,
+  theme,
+  onToggleTheme,
+}) {
   const isAdmin = currentUser?.role === "ADMIN";
   const initial = currentUser?.name?.trim()?.charAt(0)?.toUpperCase() || "U";
+  const isLightTheme = theme === "light";
 
   return (
-    <header className="sticky top-0 z-10 border-b border-slate-800 bg-slate-950/80 backdrop-blur">
+    <header className="sticky top-0 z-10 border-b border-slate-800 bg-slate-950/80 backdrop-blur transition-colors duration-300">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-cyan-400">
@@ -15,6 +23,20 @@ function Navbar({ isAuthenticated, currentUser, onNavigate, onLogout }) {
         </div>
 
         <nav className="flex items-center gap-2 text-sm sm:gap-4 sm:text-base">
+          <button
+            type="button"
+            onClick={onToggleTheme}
+            className="rounded-md border border-slate-700 px-3 py-1.5 font-semibold text-slate-200 transition hover:border-cyan-400/60 hover:bg-slate-800"
+            title={
+              isLightTheme ? "Switch to dark mode" : "Switch to light mode"
+            }
+            aria-label={
+              isLightTheme ? "Switch to dark mode" : "Switch to light mode"
+            }
+          >
+            {isLightTheme ? "Dark mode" : "Light mode"}
+          </button>
+
           <button
             type="button"
             onClick={() =>
@@ -52,10 +74,10 @@ function Navbar({ isAuthenticated, currentUser, onNavigate, onLogout }) {
           {isAuthenticated && (
             <button
               type="button"
-              onClick={() => onNavigate(isAdmin ? "admin" : "home")}
+              onClick={() => onNavigate("incidents")}
               className="rounded-md px-3 py-1.5 text-slate-300 transition hover:bg-slate-800 hover:text-white"
             >
-              {isAdmin ? "Users" : "Modules"}
+              Incident Tickets
             </button>
           )}
 

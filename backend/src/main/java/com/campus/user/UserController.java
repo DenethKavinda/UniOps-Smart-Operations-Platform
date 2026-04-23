@@ -23,6 +23,7 @@ import com.campus.user.dto.RegisterRequest;
 import com.campus.user.dto.ResetPasswordRequest;
 import com.campus.user.dto.UpdateProfileRequest;
 import com.campus.user.dto.UpdateRoleRequest;
+import com.campus.user.dto.UserDirectoryResponse;
 import com.campus.user.dto.UserProfileResponse;
 
 @RestController
@@ -68,6 +69,11 @@ public class UserController {
     @GetMapping("/users/{userId}/profile")
     public ResponseEntity<ApiResponse<UserProfileResponse>> getProfile(@PathVariable Long userId) {
         return ResponseEntity.ok(ApiResponse.success("Profile loaded successfully.", userService.getUserProfile(userId)));
+    }
+
+    @GetMapping("/users/directory")
+    public ResponseEntity<ApiResponse<List<UserDirectoryResponse>>> usersDirectory() {
+        return ResponseEntity.ok(ApiResponse.success("Users loaded successfully.", userService.getUserDirectory()));
     }
 
     @PutMapping("/users/{userId}/profile")
