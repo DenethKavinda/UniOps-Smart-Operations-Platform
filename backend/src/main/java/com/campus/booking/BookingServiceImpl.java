@@ -115,8 +115,13 @@ public class BookingServiceImpl implements BookingService {
         Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found."));
 
+        if (request == null || request.getStatus() == null
+                || request.getStatus().isBlank()) {
+            throw new IllegalArgumentException("Status is required.");
+        }
+
         String currentStatus = booking.getStatus();
-        String newStatus = request.getStatus();
+        String newStatus = request.getStatus().trim().toUpperCase();
 
         // Validate status transitions
         if ("PENDING".equals(currentStatus)) {
