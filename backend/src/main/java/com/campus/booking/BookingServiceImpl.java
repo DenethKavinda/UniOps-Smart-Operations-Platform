@@ -57,9 +57,13 @@ public class BookingServiceImpl implements BookingService {
             throw new IllegalArgumentException("Booking date cannot be in the past. Please select today or a future date.");
         }
 
-        // Check for conflicts
+        // Conflict check: ensure no PENDING or APPROVED booking exists
+        // for the same resource on the same date with overlapping time ranges.
+        // Overlap condition: existing.startTime < newEnd AND existing.endTime > newStart
         List<Booking> conflicts = bookingRepository.findConflictingBookings(request.getResourceId(),
                 request.getBookingDate(), request.getStartTime(), request.getEndTime());
+        // If any conflicting bookings are found, reject this request.
+        // The database query already filters for only active bookings (PENDING/APPROVED).
         if (!conflicts.isEmpty()) {
             throw new IllegalArgumentException(
                     "This resource is already booked for the selected date and time range.");
@@ -76,6 +80,7 @@ public class BookingServiceImpl implements BookingService {
         booking.setBookingDate(request.getBookingDate());
         booking.setStartTime(request.getStartTime());
         booking.setEndTime(request.getEndTime());
+        // New bookings always start as PENDING — admin must approve them.
         booking.setStatus("PENDING");
 
         Booking savedBooking = bookingRepository.save(booking);
