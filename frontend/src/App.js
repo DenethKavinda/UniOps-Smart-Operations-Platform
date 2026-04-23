@@ -12,6 +12,7 @@ import PasswordRest from "./pages/PasswordRest";
 import Register from "./pages/Register";
 import Users from "./pages/Users";
 import UserProfile from "./pages/UserProfile";
+import Bookings from "./pages/Bookings";
 
 function App() {
   const [theme, setTheme] = useState(() => {

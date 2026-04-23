@@ -1,76 +1,47 @@
-package com.campus.booking;
+package com.campus.booking.dto;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
-import jakarta.persistence.Table;
+public class BookingResponse {
 
-@Entity
-@Table(name = "bookings")
-public class Booking {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(nullable = false)
     private Long resourceId;
-
-    @Column(nullable = false)
     private String resourceName;
-
-    @Column(nullable = false)
     private String requestedBy;
-
-    @Column(nullable = false)
     private String requestedByEmail;
-
-    @Column(nullable = false, length = 500)
     private String purpose;
-
     private Integer expectedAttendees;
-
-    @Column(nullable = false)
     private LocalDate bookingDate;
-
-    @Column(nullable = false)
     private LocalTime startTime;
-
-    @Column(nullable = false)
     private LocalTime endTime;
-
-    @Column(nullable = false)
-    private String status = "PENDING";
-
-    @Column(length = 500)
+    private String status;
     private String adminNote;
-
-    @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
-
     private LocalDateTime updatedAt;
 
-    @PrePersist
-    public void onCreate() {
-        if (createdAt == null) {
-            createdAt = LocalDateTime.now();
-        }
-        if (status == null) {
-            status = "PENDING";
-        }
+    public BookingResponse() {
     }
 
-    @PreUpdate
-    public void onUpdate() {
-        updatedAt = LocalDateTime.now();
+    public BookingResponse(Long id, Long resourceId, String resourceName, String requestedBy,
+            String requestedByEmail, String purpose, Integer expectedAttendees, LocalDate bookingDate,
+            LocalTime startTime, LocalTime endTime, String status, String adminNote, LocalDateTime createdAt,
+            LocalDateTime updatedAt) {
+        this.id = id;
+        this.resourceId = resourceId;
+        this.resourceName = resourceName;
+        this.requestedBy = requestedBy;
+        this.requestedByEmail = requestedByEmail;
+        this.purpose = purpose;
+        this.expectedAttendees = expectedAttendees;
+        this.bookingDate = bookingDate;
+        this.startTime = startTime;
+        this.endTime = endTime;
+        this.status = status;
+        this.adminNote = adminNote;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
     }
 
     public Long getId() {

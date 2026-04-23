@@ -40,7 +40,7 @@ public class HomeDashboardController {
         long totalResources = assetRepository.count();
         long availableResources = assetRepository.countByStatusIgnoreCase("AVAILABLE");
         long busyResources = Math.max(0, totalResources - availableResources);
-        long activeBookings = bookingRepository.countByStatusIgnoreCase("CONFIRMED");
+        long activeBookings = bookingRepository.countByStatusIgnoreCase("APPROVED");
         long pendingBookings = bookingRepository.countByStatusIgnoreCase("PENDING");
         long openTickets = incidentTicketRepository.countByStatus(IncidentStatus.OPEN);
         long inProgressTickets = incidentTicketRepository.countByStatus(IncidentStatus.IN_PROGRESS);
@@ -49,17 +49,17 @@ public class HomeDashboardController {
         List<HomeActivityResponse> activities = new ArrayList<>();
         bookingRepository.findTop5ByOrderByCreatedAtDesc().forEach((Booking booking)
                 -> activities.add(new HomeActivityResponse(
-                        booking.getStatus() != null && booking.getStatus().equalsIgnoreCase("CONFIRMED")
+                        booking.getStatus() != null && booking.getStatus().equalsIgnoreCase("APPROVED")
                         ? "booking-approved"
                         : booking.getStatus() != null && booking.getStatus().equalsIgnoreCase("PENDING")
                         ? "booking-pending"
                         : "booking-updated",
-                        booking.getStatus() != null && booking.getStatus().equalsIgnoreCase("CONFIRMED")
+                        booking.getStatus() != null && booking.getStatus().equalsIgnoreCase("APPROVED")
                         ? "Booking approved"
                         : booking.getStatus() != null && booking.getStatus().equalsIgnoreCase("PENDING")
                         ? "Booking pending"
                         : "Booking updated",
-                        booking.getTitle(),
+                        booking.getResourceName(),
                         booking.getCreatedAt())));
 
         incidentTicketRepository.findTop5ByOrderByCreatedAtDesc().forEach((IncidentTicket incident)
