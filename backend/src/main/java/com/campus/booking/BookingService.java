@@ -14,6 +14,8 @@ public interface BookingService {
 
     List<BookingResponse> getBookingsByEmail(String email);
 
+    List<BookingResponse> getBookingsByResource(Long resourceId);
+
     List<BookingResponse> getBookingsByStatus(String status);
 
     BookingResponse getBookingById(Long id);

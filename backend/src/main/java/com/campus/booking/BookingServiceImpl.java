@@ -97,6 +97,14 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
+    public List<BookingResponse> getBookingsByResource(Long resourceId) {
+        return bookingRepository.findByResourceIdOrderByCreatedAtDesc(resourceId)
+                .stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public List<BookingResponse> getBookingsByStatus(String status) {
         return bookingRepository.findByStatusIgnoreCaseOrderByCreatedAtDesc(status).stream()
                 .map(this::toResponse)

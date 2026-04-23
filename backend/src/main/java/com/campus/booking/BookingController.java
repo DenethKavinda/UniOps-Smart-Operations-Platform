@@ -64,6 +64,14 @@ public class BookingController {
                 ApiResponse.success("Bookings filtered by status retrieved successfully.", bookings));
     }
 
+    @GetMapping("/bookings/resource")
+    public ResponseEntity<ApiResponse<List<BookingResponse>>> getBookingsByResource(
+            @RequestParam Long resourceId) {
+        List<BookingResponse> bookings = bookingService.getBookingsByResource(resourceId);
+        return ResponseEntity.ok(
+                ApiResponse.success("Bookings for resource retrieved successfully.", bookings));
+    }
+
     @PutMapping("/bookings/{id}/status")
     public ResponseEntity<ApiResponse<BookingResponse>> updateBookingStatus(@PathVariable Long id,
             @RequestBody UpdateBookingStatusRequest request) {
