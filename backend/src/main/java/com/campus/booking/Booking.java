@@ -38,7 +38,7 @@ public class Booking {
 
     private Integer expectedAttendees;
 
-    @Column(nullable = false)
+    @Column
     private LocalDate bookingDate;
 
     @Column(nullable = false)
