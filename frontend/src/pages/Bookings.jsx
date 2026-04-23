@@ -305,13 +305,17 @@ function Bookings({ user, onBack }) {
             </div>
 
             {loading && bookings.length === 0 ? (
-              <div className="text-center py-8 text-slate-300">
-                Loading your bookings...
+              <div className="rounded-2xl border border-slate-800 bg-slate-950/50 p-8 text-center">
+                <p className="text-slate-300">Loading your bookings...</p>
               </div>
             ) : bookings.length === 0 ? (
               <div className="rounded-2xl border border-slate-800 bg-slate-950/50 p-8 text-center">
-                <p className="text-slate-300">
-                  You haven't created any bookings yet.
+                <p className="text-slate-300 font-semibold">No bookings yet</p>
+                <p className="mt-2 text-sm text-slate-400">
+                  Fill in the form above to create your first booking request.
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Your bookings will appear here after submission.
                 </p>
               </div>
             ) : (
