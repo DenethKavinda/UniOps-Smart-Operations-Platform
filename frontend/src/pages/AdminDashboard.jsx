@@ -294,7 +294,20 @@ function AdminDashboard({ user, onOpenAddNotifications, onOpenAnalytics }) {
                       : "bg-slate-950/60 text-slate-200 hover:bg-slate-800"
                   }`}
                 >
-                  <span>{section.label}</span>
+                  <span className="flex items-center justify-between w-full">
+                    <span>{section.label}</span>
+                    {section.id === "bookings" && dashboard?.bookingCount > 0 && (
+                      <span
+                        className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${
+                          activeSection === section.id
+                            ? "bg-slate-950/30 text-slate-950"
+                            : "bg-cyan-500/20 text-cyan-300"
+                        }`}
+                      >
+                        {dashboard.bookingCount}
+                      </span>
+                    )}
+                  </span>
                   <span className="text-xs opacity-80">
                     {section.id === activeSection ? "Open" : "View"}
                   </span>
