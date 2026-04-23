@@ -555,6 +555,7 @@ function AdminDashboard({
                           <th className="px-4 py-2">Time</th>
                           <th className="px-4 py-2">Purpose</th>
                           <th className="px-4 py-2">Status</th>
+                          <th className="px-4 py-2">Note</th>
                           <th className="px-4 py-2">Actions</th>
                         </tr>
                       </thead>
@@ -562,7 +563,7 @@ function AdminDashboard({
                         {loading ? (
                           <tr>
                             <td
-                              colSpan="7"
+                              colSpan="8"
                               className="px-4 py-8 text-center text-slate-300"
                             >
                               Loading bookings...
@@ -571,7 +572,7 @@ function AdminDashboard({
                         ) : bookings.length === 0 ? (
                           <tr>
                             <td
-                              colSpan="7"
+                              colSpan="8"
                               className="px-4 py-8 text-center text-slate-300"
                             >
                               No bookings found
@@ -616,6 +617,9 @@ function AdminDashboard({
                                 >
                                   {item.status}
                                 </span>
+                              </td>
+                              <td className="px-4 py-4 text-xs text-slate-400">
+                                {item.adminNote || "-"}
                               </td>
                               <td className="rounded-r-2xl px-4 py-4">
                                 {item.status === "PENDING" && (
