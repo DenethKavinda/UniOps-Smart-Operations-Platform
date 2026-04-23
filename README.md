@@ -159,3 +159,27 @@ Check credentials and DB name in `application.properties`, and confirm MySQL ser
 
 - Notification features use backend APIs and server-sent events.
 - Admin and user notification flows are implemented in frontend pages.
+
+## Booking API Endpoints (Module B)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | /api/bookings | Create a new booking request |
+| GET | /api/bookings | Get all bookings (admin view) |
+| GET | /api/bookings/{id} | Get booking by ID |
+| GET | /api/bookings/my?email= | Get bookings for a specific user |
+| GET | /api/bookings/status?status= | Filter bookings by status |
+| GET | /api/bookings/resource?resourceId= | Get bookings for a resource |
+| PUT | /api/bookings/{id}/status | Update booking status (approve/reject/cancel) |
+| DELETE | /api/admin/bookings/{id} | Delete a booking (admin only) |
+
+## Booking Status Workflow
+
+PENDING -> APPROVED or REJECTED
+APPROVED -> CANCELLED
+REJECTED and CANCELLED are terminal states
+
+## Conflict Checking
+
+The system prevents double-booking by checking for overlapping
+time ranges on the same resource and date before saving a new booking.

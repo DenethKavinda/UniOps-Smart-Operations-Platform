@@ -261,7 +261,10 @@ function AdminDashboard({
     {
       title: "Booking",
       value: dashboard?.bookingCount ?? 0,
-      note: "Reservation records loaded",
+      note:
+        dashboard?.pendingBookingCount != null
+          ? `${dashboard.pendingBookingCount} pending approval`
+          : "Reservations tracked",
     },
     {
       title: "Incidents",
