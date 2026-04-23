@@ -1,66 +1,247 @@
 import { useEffect, useState } from "react";
 import api from "../api/axiosConfig";
 
+/* ─── tiny pulse animation injected once ─── */
+const PULSE_STYLE = `
+@keyframes pulseRing {
+  0%   { transform: scale(1);   opacity: 0.6; }
+  70%  { transform: scale(1.8); opacity: 0;   }
+  100% { transform: scale(1.8); opacity: 0;   }
+}
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position:  400px 0; }
+}
+`;
+
+function StyleOnce() {
+  return <style>{PULSE_STYLE}</style>;
+}
+
+/* ─── helpers ─── */
+const STATUSES = new Set(["", "ACTIVE", "OUT_OF_SERVICE"]);
+
+const sanitize = (v, max) =>
+  String(v ?? "").replace(/[\r\n]+/g, " ").trim().slice(0, max);
+
+function validateFilters(f) {
+  const errors = {};
+  const s = {
+    ...f,
+    q: sanitize(f.q, 80),
+    type: sanitize(f.type, 40),
+    location: sanitize(f.location, 60),
+    status: f.status ?? "",
+    minCapacity: f.minCapacity ?? "",
+  };
+  if (s.minCapacity !== "") {
+    const n = Number(s.minCapacity);
+    if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0)
+      errors.minCapacity = "Must be a non-negative whole number.";
+  }
+  if (!STATUSES.has(s.status)) errors.status = "Invalid status value.";
+  return { sanitized: s, errors, isValid: !Object.keys(errors).length };
+}
+
+function fmtWindow(s, e) {
+  if (!s || !e) return "";
+  const fmt = (d) =>
+    new Date(d).toLocaleString("en-GB", {
+      day: "2-digit", month: "short", year: "numeric",
+      hour: "2-digit", minute: "2-digit",
+    });
+  return `${fmt(s)} → ${fmt(e)}`;
+}
+
+/* ─── sub-components ─── */
+function StatusBadge({ status }) {
+  const active = status === "ACTIVE";
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 5,
+        padding: "3px 10px",
+        borderRadius: 999,
+        fontSize: 11,
+        fontWeight: 700,
+        letterSpacing: "0.08em",
+        textTransform: "uppercase",
+        background: active ? "rgba(16,185,129,0.12)" : "rgba(239,68,68,0.10)",
+        color: active ? "#10b981" : "#f87171",
+        border: `1px solid ${active ? "rgba(16,185,129,0.25)" : "rgba(239,68,68,0.2)"}`,
+      }}
+    >
+      <span
+        style={{
+          position: "relative",
+          display: "inline-block",
+          width: 7,
+          height: 7,
+          borderRadius: "50%",
+          background: active ? "#10b981" : "#f87171",
+        }}
+      >
+        {active && (
+          <span
+            style={{
+              position: "absolute",
+              inset: 0,
+              borderRadius: "50%",
+              background: "#10b981",
+              animation: "pulseRing 1.8s ease-out infinite",
+            }}
+          />
+        )}
+      </span>
+      {status}
+    </span>
+  );
+}
+
+function AvailBadge({ now }) {
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 5,
+        padding: "3px 10px",
+        borderRadius: 999,
+        fontSize: 11,
+        fontWeight: 700,
+        letterSpacing: "0.08em",
+        textTransform: "uppercase",
+        background: now ? "rgba(6,182,212,0.12)" : "rgba(100,116,139,0.12)",
+        color: now ? "#22d3ee" : "#94a3b8",
+        border: `1px solid ${now ? "rgba(6,182,212,0.22)" : "rgba(100,116,139,0.2)"}`,
+      }}
+    >
+      {now ? "● Available" : "○ Not now"}
+    </span>
+  );
+}
+
+function DetailRow({ label, value, accent }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        padding: "9px 14px",
+        borderRadius: 10,
+        background: "rgba(15,23,42,0.4)",
+        border: "1px solid rgba(255,255,255,0.05)",
+        marginBottom: 6,
+      }}
+    >
+      <span style={{ color: "#64748b", fontSize: 13 }}>{label}</span>
+      <span
+        style={{
+          fontWeight: 600,
+          fontSize: 13,
+          color: accent ? "#22d3ee" : "#f1f5f9",
+        }}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function FilterInput({ value, onChange, placeholder, error, type = "text", children }) {
+  const base = {
+    width: "100%",
+    boxSizing: "border-box",
+    background: "rgba(15,23,42,0.6)",
+    border: `1px solid ${error ? "rgba(248,113,113,0.5)" : "rgba(255,255,255,0.07)"}`,
+    borderRadius: 10,
+    padding: "9px 12px",
+    color: "#f1f5f9",
+    fontSize: 13,
+    outline: "none",
+    transition: "border-color 0.2s",
+  };
+
+  if (children) {
+    return (
+      <select value={value} onChange={onChange} style={base}>
+        {children}
+      </select>
+    );
+  }
+  return (
+    <input
+      type={type}
+      min={type === "number" ? 0 : undefined}
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      style={base}
+    />
+  );
+}
+
+function SkeletonRow() {
+  const shimmer = {
+    background:
+      "linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.04) 75%)",
+    backgroundSize: "400px 100%",
+    animation: "shimmer 1.4s infinite linear",
+    borderRadius: 6,
+    height: 13,
+  };
+  return (
+    <tr style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+      {[120, 80, 60, 90, 80, 70].map((w, i) => (
+        <td key={i} style={{ padding: "14px 16px" }}>
+          <div style={{ ...shimmer, width: w }} />
+        </td>
+      ))}
+    </tr>
+  );
+}
+
+/* ─── main component ─── */
 function Resources({ user }) {
   const [assets, setAssets] = useState([]);
-  const [selectedAsset, setSelectedAsset] = useState(null);
+  const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [formErrors, setFormErrors] = useState({});
   const [filters, setFilters] = useState({
-    q: "",
-    type: "",
-    minCapacity: "",
-    location: "",
-    status: "",
+    q: "", type: "", minCapacity: "", location: "", status: "",
   });
 
-  const validateFilters = (nextFilters) => {
-    const errors = {};
+  const EMPTY = { q: "", type: "", minCapacity: "", location: "", status: "" };
 
-    const sanitized = {
-      ...nextFilters,
-      q: (nextFilters.q ?? "").trim().slice(0, 80),
-      type: (nextFilters.type ?? "").trim().slice(0, 40),
-      location: (nextFilters.location ?? "").trim().slice(0, 60),
-      status: nextFilters.status ?? "",
-      minCapacity: nextFilters.minCapacity ?? "",
-    };
-
-    if (sanitized.minCapacity !== "") {
-      const asNumber = Number(sanitized.minCapacity);
-      const isInteger = Number.isInteger(asNumber);
-      if (!Number.isFinite(asNumber) || !isInteger || asNumber < 0) {
-        errors.minCapacity = "Minimum capacity must be a non-negative whole number.";
-      }
-    }
-
-    return { sanitized, errors, isValid: Object.keys(errors).length === 0 };
-  };
-
-  const loadAssets = async (nextFilters = filters) => {
+  const loadAssets = async (f = filters) => {
     setLoading(true);
     setError("");
     try {
       const params = {
-        q: nextFilters.q || undefined,
-        type: nextFilters.type || undefined,
-        minCapacity:
-          nextFilters.minCapacity === "" ? undefined : nextFilters.minCapacity,
-        location: nextFilters.location || undefined,
-        status: nextFilters.status || undefined,
+        q: f.q || undefined,
+        type: f.type || undefined,
+        minCapacity: f.minCapacity === "" ? undefined : f.minCapacity,
+        location: f.location || undefined,
+        status: f.status || undefined,
       };
-
-      const response = await api.get("/assets", { params });
-      if (response.data?.success) {
-        const items = response.data.data || [];
+      const res = await api.get("/assets", { params });
+      if (res.data?.success) {
+        const items = res.data.data || [];
         setAssets(items);
-        if (selectedAsset) {
-          const refreshed = items.find((a) => a.id === selectedAsset.id);
-          setSelectedAsset(refreshed || null);
+        if (selected) {
+          const refreshed = items.find((a) => a.id === selected.id);
+          setSelected(refreshed || null);
         }
       } else {
-        setError(response.data?.message || "Unable to load resources.");
+        setError(res.data?.message || "Unable to load resources.");
       }
     } catch (err) {
       setError(err.response?.data?.message || "Unable to load resources.");
@@ -69,319 +250,624 @@ function Resources({ user }) {
     }
   };
 
-  useEffect(() => {
-    const init = async () => {
-      await loadAssets({
-        q: "",
-        type: "",
-        minCapacity: "",
-        location: "",
-        status: "",
-      });
-    };
+  useEffect(() => { loadAssets(EMPTY); }, []); // eslint-disable-line
 
-    init();
-    // Intentionally run once on mount.
-  }, []);
+  const handleSearch = () => {
+    const { sanitized, errors, isValid } = validateFilters(filters);
+    setFilters((p) => ({ ...p, ...sanitized }));
+    setFormErrors(errors);
+    if (isValid) loadAssets(sanitized);
+  };
 
-  const formatWindow = (startAt, endAt) => {
-    if (!startAt || !endAt) return "";
-    return `${startAt.replace("T", " ")} → ${endAt.replace("T", " ")}`;
+  const handleClear = () => {
+    setFilters(EMPTY);
+    setFormErrors({});
+    loadAssets(EMPTY);
+  };
+
+  const setField = (key) => (e) => {
+    setFilters((p) => ({ ...p, [key]: e.target.value }));
+    if (formErrors[key]) setFormErrors((p) => ({ ...p, [key]: undefined }));
+  };
+
+  /* glass card base */
+  const glass = {
+    background: "rgba(15,23,42,0.65)",
+    backdropFilter: "blur(16px)",
+    WebkitBackdropFilter: "blur(16px)",
+    border: "1px solid rgba(255,255,255,0.07)",
+    borderRadius: 18,
   };
 
   return (
-    <main className="relative overflow-hidden">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(34,211,238,0.2),_transparent_45%),radial-gradient(circle_at_bottom_left,_rgba(14,116,144,0.25),_transparent_40%)]" />
+    <main
+      style={{
+        position: "relative",
+        overflow: "hidden",
+        minHeight: "100vh",
+        background: "linear-gradient(135deg,#020817 0%,#0a1628 50%,#041020 100%)",
+      }}
+    >
+      <StyleOnce />
 
-      <section className="relative mx-auto max-w-6xl px-4 pb-16 pt-12 sm:px-6 lg:px-8 lg:pb-24 lg:pt-20">
-        <p className="mb-3 inline-flex rounded-full border border-cyan-400/40 bg-cyan-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300">
-          Resources
-        </p>
-        <h2 className="max-w-3xl text-3xl font-black leading-tight text-white sm:text-4xl lg:text-5xl">
-          Facilities & assets catalogue
-        </h2>
-        <p className="mt-3 text-cyan-300">Browse and book resources, {user?.name}.</p>
-        <p className="mt-4 max-w-2xl text-base text-slate-300 sm:text-lg">
-          Search campus resources, check status, and review availability windows.
-        </p>
+      {/* decorative orbs */}
+      <div
+        style={{
+          position: "absolute", top: -120, right: -120,
+          width: 600, height: 600, borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(34,211,238,0.08) 0%, transparent 70%)",
+          pointerEvents: "none",
+        }}
+      />
+      <div
+        style={{
+          position: "absolute", bottom: -80, left: -80,
+          width: 500, height: 500, borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(14,116,144,0.10) 0%, transparent 70%)",
+          pointerEvents: "none",
+        }}
+      />
 
-        <section className="mt-10 rounded-3xl border border-slate-800 bg-slate-900/70 p-6">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+      <section
+        style={{
+          position: "relative",
+          maxWidth: 1200,
+          margin: "0 auto",
+          padding: "80px 24px 96px",
+        }}
+      >
+        {/* page header */}
+        <div style={{ marginBottom: 40 }}>
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "4px 14px",
+              borderRadius: 999,
+              background: "rgba(34,211,238,0.08)",
+              border: "1px solid rgba(34,211,238,0.2)",
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: "0.18em",
+              textTransform: "uppercase",
+              color: "#22d3ee",
+              marginBottom: 20,
+            }}
+          >
+            <span style={{ opacity: 0.6 }}>◈</span> Resources
+          </span>
+
+          <h1
+            style={{
+              fontSize: "clamp(2rem, 4vw, 3.25rem)",
+              fontWeight: 900,
+              color: "#fff",
+              lineHeight: 1.1,
+              letterSpacing: "-0.02em",
+              margin: 0,
+            }}
+          >
+            Facilities &amp;{" "}
+            <span
+              style={{
+                background: "linear-gradient(90deg,#22d3ee,#0891b2)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}
+            >
+              Assets
+            </span>
+          </h1>
+
+          <p style={{ marginTop: 12, color: "#64748b", fontSize: 15, maxWidth: 480 }}>
+            Browse campus resources, check live status, and review availability windows.
+            {user?.name && (
+              <span style={{ color: "#22d3ee" }}> Welcome, {user.name}.</span>
+            )}
+          </p>
+        </div>
+
+        {/* catalogue card */}
+        <div style={{ ...glass, padding: 28 }}>
+          {/* card header */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              flexWrap: "wrap",
+              gap: 12,
+              marginBottom: 24,
+            }}
+          >
             <div>
-              <h3 className="text-2xl font-black text-white">Catalogue</h3>
-              <p className="mt-1 text-sm text-slate-300">
-                Browse bookable resources, check status, and review availability
-                windows.
+              <h2
+                style={{
+                  fontSize: 20,
+                  fontWeight: 800,
+                  color: "#f1f5f9",
+                  margin: 0,
+                }}
+              >
+                Catalogue
+              </h2>
+              <p style={{ color: "#475569", fontSize: 13, marginTop: 4 }}>
+                {assets.length} resource{assets.length !== 1 ? "s" : ""} loaded
               </p>
             </div>
             <button
               type="button"
               onClick={() => loadAssets()}
-              className="rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "8px 18px",
+                borderRadius: 10,
+                background: "rgba(34,211,238,0.1)",
+                border: "1px solid rgba(34,211,238,0.3)",
+                color: "#22d3ee",
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "background 0.2s",
+              }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.background = "rgba(34,211,238,0.18)")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.background = "rgba(34,211,238,0.1)")
+              }
             >
-              Refresh
+              ↻ Refresh
             </button>
           </div>
 
           {error && (
-            <div className="mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
-              {error}
+            <div
+              style={{
+                padding: "12px 16px",
+                borderRadius: 12,
+                background: "rgba(248,113,113,0.08)",
+                border: "1px solid rgba(248,113,113,0.25)",
+                color: "#fca5a5",
+                fontSize: 13,
+                marginBottom: 20,
+              }}
+            >
+              ⚠ {error}
             </div>
           )}
 
-          <div className="mt-5 rounded-2xl border border-slate-800 bg-slate-950/50 p-5">
-            <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">
-              Search and filter
-            </h4>
+          {/* filters */}
+          <div
+            style={{
+              background: "rgba(8,15,30,0.6)",
+              border: "1px solid rgba(255,255,255,0.05)",
+              borderRadius: 14,
+              padding: 20,
+              marginBottom: 24,
+            }}
+          >
+            <p
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: "0.18em",
+                textTransform: "uppercase",
+                color: "#334155",
+                marginBottom: 14,
+              }}
+            >
+              Filter resources
+            </p>
 
-            <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-              <input
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+                gap: 10,
+                marginBottom: 14,
+              }}
+            >
+              <FilterInput
                 value={filters.q}
-                onChange={(e) =>
-                  setFilters((prev) => ({ ...prev, q: e.target.value }))
-                }
-                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none ring-cyan-400/60 transition focus:ring"
-                placeholder="Search by name"
+                onChange={setField("q")}
+                placeholder="Search by name…"
+                error={formErrors.q}
               />
-              <input
+              <FilterInput
                 value={filters.type}
-                onChange={(e) =>
-                  setFilters((prev) => ({ ...prev, type: e.target.value }))
-                }
-                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none ring-cyan-400/60 transition focus:ring"
+                onChange={setField("type")}
                 placeholder="Type"
+                error={formErrors.type}
               />
-              <input
+              <FilterInput
                 type="number"
-                min="0"
                 value={filters.minCapacity}
-                onChange={(e) => {
-                  setFilters((prev) => ({
-                    ...prev,
-                    minCapacity: e.target.value,
-                  }));
-                  if (formErrors.minCapacity) {
-                    setFormErrors((prev) => ({ ...prev, minCapacity: undefined }));
-                  }
-                }}
-                className={`w-full rounded-lg border bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none ring-cyan-400/60 transition focus:ring ${
-                  formErrors.minCapacity
-                    ? "border-rose-500/60"
-                    : "border-slate-700"
-                }`}
+                onChange={setField("minCapacity")}
                 placeholder="Min capacity"
+                error={formErrors.minCapacity}
               />
-              <input
+              <FilterInput
                 value={filters.location}
-                onChange={(e) =>
-                  setFilters((prev) => ({
-                    ...prev,
-                    location: e.target.value,
-                  }))
-                }
-                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none ring-cyan-400/60 transition focus:ring"
+                onChange={setField("location")}
                 placeholder="Location"
+                error={formErrors.location}
               />
-              <select
+              <FilterInput
                 value={filters.status}
-                onChange={(e) =>
-                  setFilters((prev) => ({ ...prev, status: e.target.value }))
-                }
-                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none ring-cyan-400/60 transition focus:ring"
+                onChange={setField("status")}
+                error={formErrors.status}
               >
                 <option value="">Any status</option>
                 <option value="ACTIVE">ACTIVE</option>
                 <option value="OUT_OF_SERVICE">OUT_OF_SERVICE</option>
-              </select>
+              </FilterInput>
             </div>
 
-            {formErrors.minCapacity && (
-              <p className="mt-3 text-sm text-rose-200">
-                {formErrors.minCapacity}
-              </p>
+            {Object.values(formErrors).some(Boolean) && (
+              <div style={{ marginBottom: 12, fontSize: 12, color: "#f87171" }}>
+                {Object.entries(formErrors).map(
+                  ([k, v]) => v && <p key={k} style={{ margin: "2px 0" }}>• {v}</p>
+                )}
+              </div>
             )}
 
-            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:justify-end">
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
               <button
                 type="button"
-                onClick={() => {
-                  const cleared = {
-                    q: "",
-                    type: "",
-                    minCapacity: "",
-                    location: "",
-                    status: "",
-                  };
-                  setFilters(cleared);
-                  setFormErrors({});
-                  loadAssets(cleared);
+                onClick={handleClear}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: 10,
+                  background: "transparent",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  color: "#94a3b8",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  transition: "border-color 0.2s",
                 }}
-                className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-slate-800"
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")
+                }
               >
                 Clear
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  const { sanitized, errors, isValid } = validateFilters(filters);
-                  setFilters((prev) => ({ ...prev, ...sanitized }));
-                  setFormErrors(errors);
-                  if (!isValid) return;
-                  loadAssets(sanitized);
+                onClick={handleSearch}
+                style={{
+                  padding: "8px 20px",
+                  borderRadius: 10,
+                  background: "linear-gradient(135deg,#0891b2,#06b6d4)",
+                  border: "none",
+                  color: "#fff",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  boxShadow: "0 4px 14px rgba(6,182,212,0.3)",
+                  transition: "opacity 0.2s, transform 0.1s",
                 }}
-                className="rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
+                onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.88")}
+                onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+                onMouseDown={(e) =>
+                  (e.currentTarget.style.transform = "scale(0.97)")
+                }
+                onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
               >
                 Search
               </button>
             </div>
           </div>
 
-          <div className="mt-6 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-            <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/50">
-              <table className="min-w-full">
+          {/* table + detail panel */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: selected ? "1.5fr 1fr" : "1fr",
+              gap: 20,
+              alignItems: "start",
+            }}
+          >
+            {/* table */}
+            <div
+              style={{
+                background: "rgba(8,15,30,0.5)",
+                border: "1px solid rgba(255,255,255,0.05)",
+                borderRadius: 14,
+                overflow: "hidden",
+              }}
+            >
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
-                  <tr className="text-left text-xs uppercase tracking-[0.2em] text-slate-400">
-                    <th className="px-4 py-3">Resource</th>
-                    <th className="px-4 py-3">Type</th>
-                    <th className="px-4 py-3">Capacity</th>
-                    <th className="px-4 py-3">Location</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Available</th>
+                  <tr>
+                    {["Resource", "Type", "Cap.", "Location", "Status", "Avail."].map(
+                      (h) => (
+                        <th
+                          key={h}
+                          style={{
+                            padding: "12px 16px",
+                            textAlign: "left",
+                            fontSize: 10,
+                            fontWeight: 700,
+                            letterSpacing: "0.15em",
+                            textTransform: "uppercase",
+                            color: "#334155",
+                            borderBottom: "1px solid rgba(255,255,255,0.04)",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {h}
+                        </th>
+                      )
+                    )}
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
-                    <tr>
-                      <td
-                        colSpan="6"
-                        className="px-4 py-8 text-center text-slate-300"
-                      >
-                        Loading resources...
-                      </td>
-                    </tr>
+                    Array.from({ length: 5 }).map((_, i) => (
+                      <SkeletonRow key={i} />
+                    ))
                   ) : assets.length === 0 ? (
                     <tr>
                       <td
-                        colSpan="6"
-                        className="px-4 py-8 text-center text-slate-300"
+                        colSpan={6}
+                        style={{
+                          padding: "40px 16px",
+                          textAlign: "center",
+                          color: "#334155",
+                          fontSize: 14,
+                        }}
                       >
-                        No resources found.
+                        No resources found matching your filters.
                       </td>
                     </tr>
                   ) : (
-                    assets.map((asset) => (
-                      <tr
-                        key={asset.id}
-                        onClick={() => setSelectedAsset(asset)}
-                        className={`cursor-pointer border-t border-slate-800 text-sm text-slate-200 transition hover:bg-slate-900/60 ${
-                          selectedAsset?.id === asset.id
-                            ? "bg-slate-900/60"
-                            : "bg-transparent"
-                        }`}
-                      >
-                        <td className="px-4 py-4">
-                          <p className="font-semibold text-white">
-                            {asset.name}
-                          </p>
-                          <p className="text-xs text-slate-400">ID: {asset.id}</p>
-                        </td>
-                        <td className="px-4 py-4">{asset.type}</td>
-                        <td className="px-4 py-4">{asset.capacity}</td>
-                        <td className="px-4 py-4">{asset.location}</td>
-                        <td className="px-4 py-4">
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${
-                              asset.status === "ACTIVE"
-                                ? "bg-emerald-500/20 text-emerald-300"
-                                : "bg-rose-500/20 text-rose-300"
-                            }`}
+                    assets.map((a, idx) => {
+                      const isSelected = selected?.id === a.id;
+                      return (
+                        <tr
+                          key={a.id}
+                          onClick={() => setSelected(isSelected ? null : a)}
+                          style={{
+                            borderTop: "1px solid rgba(255,255,255,0.035)",
+                            cursor: "pointer",
+                            background: isSelected
+                              ? "rgba(34,211,238,0.06)"
+                              : "transparent",
+                            transition: "background 0.15s",
+                            animation: `fadeSlideUp 0.3s ease ${idx * 0.04}s both`,
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isSelected)
+                              e.currentTarget.style.background =
+                                "rgba(255,255,255,0.025)";
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!isSelected)
+                              e.currentTarget.style.background = "transparent";
+                          }}
+                        >
+                          <td style={{ padding: "14px 16px" }}>
+                            <p
+                              style={{
+                                fontWeight: 700,
+                                fontSize: 14,
+                                color: "#f1f5f9",
+                                margin: 0,
+                              }}
+                            >
+                              {a.name}
+                            </p>
+                            <p
+                              style={{
+                                fontSize: 11,
+                                color: "#334155",
+                                margin: "2px 0 0",
+                                fontFamily: "monospace",
+                              }}
+                            >
+                              #{a.id}
+                            </p>
+                          </td>
+                          <td
+                            style={{
+                              padding: "14px 16px",
+                              fontSize: 13,
+                              color: "#94a3b8",
+                            }}
                           >
-                            {asset.status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${
-                              asset.availableNow
-                                ? "bg-cyan-500/20 text-cyan-300"
-                                : "bg-slate-800 text-slate-200"
-                            }`}
+                            {a.type}
+                          </td>
+                          <td
+                            style={{
+                              padding: "14px 16px",
+                              fontSize: 13,
+                              color: "#94a3b8",
+                              fontVariantNumeric: "tabular-nums",
+                            }}
                           >
-                            {asset.availableNow ? "Available" : "Not now"}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
+                            {a.capacity}
+                          </td>
+                          <td
+                            style={{
+                              padding: "14px 16px",
+                              fontSize: 13,
+                              color: "#94a3b8",
+                            }}
+                          >
+                            {a.location}
+                          </td>
+                          <td style={{ padding: "14px 16px" }}>
+                            <StatusBadge status={a.status} />
+                          </td>
+                          <td style={{ padding: "14px 16px" }}>
+                            <AvailBadge now={a.availableNow} />
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
             </div>
 
-            <aside className="rounded-2xl border border-slate-800 bg-slate-950/50 p-5">
-              <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">
-                Resource details
-              </h4>
-              {!selectedAsset ? (
-                <p className="mt-3 text-sm text-slate-300">
-                  Select a resource from the list to view details.
-                </p>
-              ) : (
-                <div className="mt-4 space-y-3 text-sm text-slate-200">
+            {/* detail panel */}
+            {selected && (
+              <aside
+                style={{
+                  background: "rgba(8,15,30,0.6)",
+                  border: "1px solid rgba(34,211,238,0.12)",
+                  borderRadius: 16,
+                  padding: 20,
+                  position: "sticky",
+                  top: 20,
+                  animation: "fadeSlideUp 0.25s ease both",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    marginBottom: 16,
+                  }}
+                >
                   <div>
-                    <p className="text-lg font-bold text-white">
-                      {selectedAsset.name}
+                    <p
+                      style={{
+                        fontSize: 18,
+                        fontWeight: 800,
+                        color: "#f1f5f9",
+                        margin: 0,
+                        letterSpacing: "-0.01em",
+                      }}
+                    >
+                      {selected.name}
                     </p>
-                    <p className="text-slate-400">ID: {selectedAsset.id}</p>
+                    <p
+                      style={{
+                        fontSize: 11,
+                        color: "#334155",
+                        fontFamily: "monospace",
+                        marginTop: 3,
+                      }}
+                    >
+                      ID #{selected.id}
+                    </p>
                   </div>
-                  <DetailRow label="Type" value={selectedAsset.type} />
-                  <DetailRow
-                    label="Capacity"
-                    value={String(selectedAsset.capacity)}
-                  />
-                  <DetailRow label="Location" value={selectedAsset.location} />
-                  <DetailRow label="Status" value={selectedAsset.status} />
-                  <DetailRow
-                    label="Available now"
-                    value={selectedAsset.availableNow ? "Yes" : "No"}
-                  />
+                  <button
+                    type="button"
+                    onClick={() => setSelected(null)}
+                    style={{
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      borderRadius: 8,
+                      color: "#475569",
+                      width: 28,
+                      height: 28,
+                      cursor: "pointer",
+                      fontSize: 16,
+                      lineHeight: 1,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
 
-                  <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                      Availability windows
-                    </p>
-                    {(selectedAsset.availabilityWindows || []).length === 0 ? (
-                      <p className="mt-2 text-sm text-slate-300">
-                        No windows configured.
-                      </p>
-                    ) : (
-                      <ul className="mt-2 space-y-2 text-sm text-slate-200">
-                        {selectedAsset.availabilityWindows.map((w, idx) => (
-                          <li
-                            key={`${w.id || "w"}-${idx}`}
-                            className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2"
-                          >
-                            {formatWindow(w.startAt, w.endAt)}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
+                <DetailRow label="Type" value={selected.type} />
+                <DetailRow label="Capacity" value={selected.capacity} />
+                <DetailRow label="Location" value={selected.location} />
+                <div style={{ marginBottom: 6 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      padding: "9px 14px",
+                      borderRadius: 10,
+                      background: "rgba(15,23,42,0.4)",
+                      border: "1px solid rgba(255,255,255,0.05)",
+                    }}
+                  >
+                    <span style={{ color: "#64748b", fontSize: 13 }}>Status</span>
+                    <StatusBadge status={selected.status} />
                   </div>
                 </div>
-              )}
-            </aside>
+                <div style={{ marginBottom: 16 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      padding: "9px 14px",
+                      borderRadius: 10,
+                      background: "rgba(15,23,42,0.4)",
+                      border: "1px solid rgba(255,255,255,0.05)",
+                    }}
+                  >
+                    <span style={{ color: "#64748b", fontSize: 13 }}>
+                      Available now
+                    </span>
+                    <AvailBadge now={selected.availableNow} />
+                  </div>
+                </div>
+
+                {/* availability windows */}
+                <div>
+                  <p
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      letterSpacing: "0.15em",
+                      textTransform: "uppercase",
+                      color: "#334155",
+                      marginBottom: 10,
+                    }}
+                  >
+                    Availability windows
+                  </p>
+                  {(selected.availabilityWindows || []).length === 0 ? (
+                    <p style={{ fontSize: 13, color: "#475569" }}>
+                      No windows configured.
+                    </p>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                      {selected.availabilityWindows.map((w, idx) => (
+                        <div
+                          key={`${w.id || "w"}-${idx}`}
+                          style={{
+                            padding: "10px 14px",
+                            borderRadius: 10,
+                            background: "rgba(6,182,212,0.06)",
+                            border: "1px solid rgba(6,182,212,0.15)",
+                            fontSize: 12,
+                            color: "#67e8f9",
+                            fontVariantNumeric: "tabular-nums",
+                          }}
+                        >
+                          🕐 {fmtWindow(w.startAt, w.endAt)}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </aside>
+            )}
           </div>
-        </section>
+        </div>
       </section>
     </main>
-  );
-}
-
-function DetailRow({ label, value }) {
-  return (
-    <div className="flex items-center justify-between rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-3">
-      <span className="text-slate-300">{label}</span>
-      <span className="font-semibold text-white">{value}</span>
-    </div>
   );
 }
 
