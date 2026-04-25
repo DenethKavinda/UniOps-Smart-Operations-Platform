@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import api from "../api/axiosConfig";
 
 function Bookings({ user, onBack }) {
@@ -31,6 +31,10 @@ function Bookings({ user, onBack }) {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadBookings();
+  }, []);
 
   const handleFormChange = (e) => {
     const { name, value } = e.target;

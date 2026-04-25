@@ -261,6 +261,14 @@ function App() {
           onNavigate={setCurrentView}
         />
       )}
+      {currentView === "bookings" && currentUser && (
+        <Bookings
+          user={currentUser}
+          onBack={() =>
+            setCurrentView(currentUser?.role === "ADMIN" ? "admin" : "home")
+          }
+        />
+      )}
       {currentView === "incidents" && currentUser && (
         <IncidentTickets
           user={currentUser}
