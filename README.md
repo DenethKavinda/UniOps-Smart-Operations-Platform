@@ -20,8 +20,6 @@ UniOps/
 
 ## Prerequisites
 
-Install these before setup:
-
 - Java 17+
 - Maven 3.8+
 - Node.js 18+ and npm
@@ -48,20 +46,46 @@ cd UniOps
 Create the database:
 
 ```sql
-CREATE DATABASE uni_ops;
+CREATE DATABASE IF NOT EXISTS uni_ops;
 ```
 
-Update backend DB settings in `backend/src/main/resources/application.properties`:
+The backend defaults to these values:
 
-```properties
-spring.datasource.url=jdbc:mysql://localhost:3306/uni_ops
-spring.datasource.username=YOUR_MYSQL_USER
-spring.datasource.password=YOUR_MYSQL_PASSWORD
+- `DB_URL`: `jdbc:mysql://localhost:3306/uni_ops`
+- `DB_USERNAME`: `root`
+- `DB_PASSWORD`: `root`
+
+If you see an error like:
+`Access denied for user 'root'@'localhost' (using password: YES)`
+then your local MySQL credentials don't match the defaults.
+
+Option A) Set environment variables
+
+Windows (PowerShell):
+
+```powershell
+$env:DB_USERNAME = "root"
+$env:DB_PASSWORD = "YOUR_REAL_PASSWORD"
+```
+
+Option B) Create a dedicated app user (recommended)
+
+```sql
+CREATE USER IF NOT EXISTS 'uniops'@'localhost' IDENTIFIED BY 'uniops';
+GRANT ALL PRIVILEGES ON uni_ops.* TO 'uniops'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+Then run with:
+
+```powershell
+$env:DB_USERNAME = "uniops"
+$env:DB_PASSWORD = "uniops"
 ```
 
 Important:
 
-- Keep `server.port=8081` for backend unless you intentionally change it.
+- Backend defaults to `server.port=8081`.
 - Frontend API base URL is configured to call `http://localhost:8081/api` by default.
 
 ## 3. Backend Setup And Run
@@ -108,57 +132,16 @@ cd frontend
 npm run build
 ```
 
-## 6. Quick Health Check
+## Common Issues
 
-- Open frontend: `http://localhost:3000`
-- Ensure backend is reachable: `http://localhost:8081/api/...` endpoints from app actions
-- Login and verify dashboard data loads
+### Port 8081 already in use
 
-## Common Issues And Fixes
-
-### 1) Maven says no POM or spring-boot goal not found
-
-Cause: command was run from wrong folder.
-
-Fix:
-
-```powershell
-cd backend
-mvn spring-boot:run
-```
-
-### 2) Port 8081 already in use
-
-Cause: another process (or old backend instance) is using 8081.
-
-Fix options:
-
-- Stop the old process and run again on 8081.
-- Or run on another port:
+Run on another port:
 
 ```powershell
 cd backend
 mvn spring-boot:run "-Dspring-boot.run.arguments=--server.port=8082"
 ```
-
-If you use 8082, also update frontend API base URL.
-
-### 3) Frontend cannot connect to backend
-
-Check:
-
-- Backend is running successfully
-- Backend and frontend ports match configuration
-- CORS is enabled in backend config
-
-### 4) MySQL authentication or connection error
-
-Check credentials and DB name in `application.properties`, and confirm MySQL service is running.
-
-## Notes
-
-- Notification features use backend APIs and server-sent events.
-- Admin and user notification flows are implemented in frontend pages.
 
 ## Booking API Endpoints (Module B)
 
@@ -183,3 +166,19 @@ REJECTED and CANCELLED are terminal states
 
 The system prevents double-booking by checking for overlapping
 time ranges on the same resource and date before saving a new booking.
+By default it runs on:
+- `http://localhost:3000`
+
+### Backend API URL
+The frontend uses:
+- `REACT_APP_API_BASE_URL` (default: `http://localhost:8081/api`)
+
+Windows (cmd):
+```bat
+set REACT_APP_API_BASE_URL=http://localhost:8081/api
+```
+
+Windows (PowerShell):
+```powershell
+$env:REACT_APP_API_BASE_URL = "http://localhost:8081/api"
+```

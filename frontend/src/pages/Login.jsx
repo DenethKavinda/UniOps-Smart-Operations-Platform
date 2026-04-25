@@ -189,7 +189,6 @@ function Login({
       cancelled = true;
     };
   }, []);
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -276,7 +275,6 @@ function Login({
               Completing Google sign-in...
             </p>
           )}
-
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-200">

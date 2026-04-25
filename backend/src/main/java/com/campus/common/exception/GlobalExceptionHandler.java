@@ -35,7 +35,7 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error("Missing required field: " + ex.getParameterName()));
     }
 
-    @ExceptionHandler({MultipartException.class, MaxUploadSizeExceededException.class})
+    @ExceptionHandler({ MultipartException.class, MaxUploadSizeExceededException.class })
     public ResponseEntity<ApiResponse<Void>> handleMultipart(Exception ex) {
         return ResponseEntity.badRequest()
                 .body(ApiResponse.error("Invalid file upload request. Please try again with a valid file."));

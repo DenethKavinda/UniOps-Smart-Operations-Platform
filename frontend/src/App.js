@@ -10,6 +10,7 @@ import Login from "./pages/Login";
 import Notifications from "./pages/Notifications";
 import PasswordRest from "./pages/PasswordRest";
 import Register from "./pages/Register";
+import Resources from "./pages/Resources";
 import Users from "./pages/Users";
 import UserProfile from "./pages/UserProfile";
 import Bookings from "./pages/Bookings";
@@ -293,6 +294,9 @@ function App() {
           }
         />
       )}
+        {currentView === "resources" &&
+          currentUser &&
+          currentUser?.role !== "ADMIN" && <Resources user={currentUser} />}
       {currentView === "login" && (
         <Login
           onLoginSuccess={handleLoginSuccess}

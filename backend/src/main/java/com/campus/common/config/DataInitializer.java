@@ -12,6 +12,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.campus.asset.Asset;
 import com.campus.asset.AssetRepository;
+import com.campus.asset.AssetStatus;
 import com.campus.booking.Booking;
 import com.campus.booking.BookingRepository;
 import com.campus.incident.IncidentPriority;
@@ -30,8 +31,7 @@ public class DataInitializer {
     @Bean
     CommandLineRunner seedData(UserRepository userRepository, BookingRepository bookingRepository,
             MaintenanceRepository maintenanceRepository, IncidentTicketRepository incidentTicketRepository,
-            AssetRepository assetRepository,
-            PasswordEncoder passwordEncoder) {
+            AssetRepository assetRepository, PasswordEncoder passwordEncoder) {
         return args -> {
             seedUsers(userRepository, passwordEncoder);
             seedBookings(bookingRepository);
@@ -121,21 +121,21 @@ public class DataInitializer {
         LocalDate yesterday = LocalDate.now().minusDays(1);
 
         bookingRepository.saveAll(List.of(
-                createBooking("Auditorium A", 1L, "Auditorium A", "Kavindi Jayasuriya",
+                createBooking(1L, "Auditorium A", "Kavindi Jayasuriya",
                         "student1@uniops.edu", "Year-end ceremony", null, tomorrow, LocalTime.of(9, 0),
                         LocalTime.of(11, 0), "APPROVED", null, LocalDateTime.now().minusDays(2)),
-                createBooking("Lab 2", 2L, "Lab 2", "Pasan Rodrigo", "student2@uniops.edu",
+                createBooking(2L, "Lab 2", "Pasan Rodrigo", "student2@uniops.edu",
                         "Group project session", null, dayAfterTomorrow, LocalTime.of(14, 0),
                         LocalTime.of(16, 0), "PENDING", null, LocalDateTime.now().minusDays(2)),
-                createBooking("Conference Hall", 3L, "Conference Hall", "Tharindu Mendis",
+                createBooking(3L, "Conference Hall", "Tharindu Mendis",
                         "student4@uniops.edu", "Department meeting", null, tomorrow, LocalTime.of(13, 0),
                         LocalTime.of(15, 0), "APPROVED", null, LocalDateTime.now().minusDays(2)),
-                createBooking("Sports Complex", 4L, "Sports Complex", "Nethmi Perera",
+                createBooking(4L, "Sports Complex", "Nethmi Perera",
                         "student5@uniops.edu", "Sports event", null, yesterday, LocalTime.of(8, 0),
                         LocalTime.of(10, 0), "CANCELLED", "Event postponed", LocalDateTime.now().minusDays(3))));
     }
 
-    private Booking createBooking(String title, Long resourceId, String resourceName, String requestedBy,
+    private Booking createBooking(Long resourceId, String resourceName, String requestedBy,
             String requestedByEmail, String purpose, Integer expectedAttendees, LocalDate bookingDate,
             LocalTime startTime, LocalTime endTime, String status, String adminNote, LocalDateTime createdAt) {
         Booking booking = new Booking();
@@ -151,6 +151,7 @@ public class DataInitializer {
         booking.setStatus(status);
         booking.setAdminNote(adminNote);
         booking.setCreatedAt(createdAt);
+        booking.setUpdatedAt(createdAt);
         return booking;
     }
 
@@ -174,20 +175,63 @@ public class DataInitializer {
     }
 
     private void seedAssets(AssetRepository assetRepository) {
-        if (assetRepository.count() > 0) {
+        if (assetRepository.count() == 0) {
+            assetRepository.saveAll(List.of(
+                    createAsset("Lecture Hall A", "LECTURE_HALL", 180, "Block A - Level 1",
+                            AssetStatus.ACTIVE.name()),
+                    createAsset("Computer Lab 2", "LAB", 45, "Engineering Building - Level 2",
+                            AssetStatus.ACTIVE.name()),
+                    createAsset("Meeting Room Omega", "MEETING_ROOM", 12, "Admin Building - Level 3",
+                            AssetStatus.ACTIVE.name()),
+                    createAsset("Projector Kit 01", "EQUIPMENT", 0, "AV Store - Ground Floor",
+                            AssetStatus.OUT_OF_SERVICE.name())));
             return;
         }
 
-        assetRepository.saveAll(List.of(
-                createAsset("Laptop Fleet", "IN_USE"),
-                createAsset("Projectors", "AVAILABLE"),
-                createAsset("Smart Boards", "MAINTENANCE"),
-                createAsset("Lab Tablets", "IN_USE")));
+        boolean changed = false;
+        List<Asset> existing = assetRepository.findAll();
+        for (Asset asset : existing) {
+            if (asset.getType() == null || asset.getType().isBlank()) {
+                asset.setType("EQUIPMENT");
+                changed = true;
+            }
+            if (asset.getCapacity() == null) {
+                asset.setCapacity(0);
+                changed = true;
+            }
+            if (asset.getLocation() == null || asset.getLocation().isBlank()) {
+                asset.setLocation("Unknown");
+                changed = true;
+            }
+
+            String status = asset.getStatus();
+            if (status == null || status.isBlank()) {
+                asset.setStatus(AssetStatus.ACTIVE.name());
+                changed = true;
+            } else {
+                String normalized = status.trim().toUpperCase();
+                if (!normalized.equals(AssetStatus.ACTIVE.name())
+                        && !normalized.equals(AssetStatus.OUT_OF_SERVICE.name())) {
+                    asset.setStatus(AssetStatus.ACTIVE.name());
+                    changed = true;
+                } else if (!normalized.equals(asset.getStatus())) {
+                    asset.setStatus(normalized);
+                    changed = true;
+                }
+            }
+        }
+
+        if (changed) {
+            assetRepository.saveAll(existing);
+        }
     }
 
-    private Asset createAsset(String name, String status) {
+    private Asset createAsset(String name, String type, int capacity, String location, String status) {
         Asset asset = new Asset();
         asset.setName(name);
+        asset.setType(type);
+        asset.setCapacity(capacity);
+        asset.setLocation(location);
         asset.setStatus(status);
         asset.setCreatedAt(LocalDateTime.now().minusDays(4));
         return asset;

@@ -34,6 +34,10 @@ public class AuthResponse {
         this.bio = bio;
     }
 
+    public AuthResponse(Long id, String name, String email, UserRole role, boolean blocked, int loginCount) {
+        this(id, name, email, role, blocked, loginCount, null, null, null, null, null);
+    }
+
     public Long getId() {
         return id;
     }

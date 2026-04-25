@@ -133,6 +133,3 @@ html[data-theme="light"] [class*="hover:border-slate-700"]:hover {
 html[data-theme="light"] [class*="hover:text-white"]:hover {
   color: #0f172a !important;
 }
-
-
-

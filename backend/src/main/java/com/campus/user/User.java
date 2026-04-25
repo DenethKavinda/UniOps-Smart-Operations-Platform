@@ -41,7 +41,6 @@ public class User {
 
     @Column(length = 1200)
     private String bio;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private UserRole role = UserRole.STUDENT;
@@ -138,7 +137,6 @@ public class User {
     public void setBio(String bio) {
         this.bio = bio;
     }
-
     public UserRole getRole() {
         return role;
     }

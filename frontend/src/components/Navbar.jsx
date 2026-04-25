@@ -17,25 +17,23 @@ function Navbar({
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-cyan-400">
             Smart Ops
           </p>
-          <h1 className="text-lg font-black tracking-tight text-slate-100">
-            UniOps
-          </h1>
+          <h1 className="text-lg font-black tracking-tight text-slate-100">UniOps</h1>
         </div>
 
         <nav className="flex items-center gap-2 text-sm sm:gap-4 sm:text-base">
-          <button
-            type="button"
-            onClick={onToggleTheme}
-            className="rounded-md border border-slate-700 px-3 py-1.5 font-semibold text-slate-200 transition hover:border-cyan-400/60 hover:bg-slate-800"
-            title={
-              isLightTheme ? "Switch to dark mode" : "Switch to light mode"
-            }
-            aria-label={
-              isLightTheme ? "Switch to dark mode" : "Switch to light mode"
-            }
-          >
-            {isLightTheme ? "Dark mode" : "Light mode"}
-          </button>
+          {typeof onToggleTheme === "function" && (
+            <button
+              type="button"
+              onClick={onToggleTheme}
+              className="rounded-md border border-slate-700 px-3 py-1.5 font-semibold text-slate-200 transition hover:border-cyan-400/60 hover:bg-slate-800"
+              title={isLightTheme ? "Switch to dark mode" : "Switch to light mode"}
+              aria-label={
+                isLightTheme ? "Switch to dark mode" : "Switch to light mode"
+              }
+            >
+              {isLightTheme ? "Dark mode" : "Light mode"}
+            </button>
+          )}
 
           <button
             type="button"
@@ -68,6 +66,16 @@ function Navbar({
                 </span>
               )}
               <span className="hidden sm:inline">Profile</span>
+            </button>
+          )}
+
+          {isAuthenticated && !isAdmin && (
+            <button
+              type="button"
+              onClick={() => onNavigate("resources")}
+              className="rounded-md px-3 py-1.5 text-slate-300 transition hover:bg-slate-800 hover:text-white"
+            >
+              Resources
             </button>
           )}
 

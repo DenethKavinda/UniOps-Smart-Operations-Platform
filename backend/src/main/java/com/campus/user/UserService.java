@@ -24,7 +24,6 @@ public interface UserService {
     AuthResponse loginWithGoogle(GoogleAuthRequest request);
 
     String getGoogleClientId();
-
     AdminDashboardResponse getDashboardOverview();
 
     List<AdminUserResponse> getAllUsers();
