@@ -294,9 +294,9 @@ function App() {
           }
         />
       )}
-        {currentView === "resources" &&
-          currentUser &&
-          currentUser?.role !== "ADMIN" && <Resources user={currentUser} />}
+        {currentView === "resources" && currentUser && (
+          <Resources user={currentUser} />
+        )}
       {currentView === "login" && (
         <Login
           onLoginSuccess={handleLoginSuccess}

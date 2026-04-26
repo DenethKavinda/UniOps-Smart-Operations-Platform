@@ -69,7 +69,7 @@ function Navbar({
             </button>
           )}
 
-          {isAuthenticated && !isAdmin && (
+          {isAuthenticated && (
             <button
               type="button"
               onClick={() => onNavigate("resources")}

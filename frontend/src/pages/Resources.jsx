@@ -210,6 +210,7 @@ function SkeletonRow() {
 
 /* ─── main component ─── */
 function Resources({ user }) {
+  const isAdmin = user?.role === "ADMIN";
   const [assets, setAssets] = useState([]);
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -218,6 +219,18 @@ function Resources({ user }) {
   const [filters, setFilters] = useState({
     q: "", type: "", minCapacity: "", location: "", status: "",
   });
+
+  const [showCreate, setShowCreate] = useState(false);
+  const [createError, setCreateError] = useState("");
+  const [createSubmitting, setCreateSubmitting] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    name: "",
+    type: "",
+    capacity: "0",
+    location: "",
+    status: "ACTIVE",
+  });
+  const [createFieldErrors, setCreateFieldErrors] = useState({});
 
   const EMPTY = { q: "", type: "", minCapacity: "", location: "", status: "" };
 
@@ -232,7 +245,8 @@ function Resources({ user }) {
         location: f.location || undefined,
         status: f.status || undefined,
       };
-      const res = await api.get("/assets", { params });
+      const endpoint = isAdmin ? "/admin/assets" : "/assets";
+      const res = await api.get(endpoint, { params });
       if (res.data?.success) {
         const items = res.data.data || [];
         setAssets(items);
@@ -247,6 +261,81 @@ function Resources({ user }) {
       setError(err.response?.data?.message || "Unable to load resources.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const validateCreate = (payload) => {
+    const nextErrors = {};
+    const cleaned = {
+      name: sanitize(payload.name, 80),
+      type: sanitize(payload.type, 40),
+      location: sanitize(payload.location, 60),
+      status: sanitize(payload.status, 40),
+      capacity: payload.capacity,
+    };
+
+    if (!cleaned.name) nextErrors.name = "Name is required.";
+    if (!cleaned.type) nextErrors.type = "Type is required.";
+    if (!cleaned.location) nextErrors.location = "Location is required.";
+
+    const capacityValue = Number(cleaned.capacity);
+    if (!Number.isFinite(capacityValue) || !Number.isInteger(capacityValue) || capacityValue < 0) {
+      nextErrors.capacity = "Capacity must be a non-negative whole number.";
+    }
+
+    const statusValue = String(cleaned.status || "").trim().toUpperCase();
+    if (statusValue && statusValue !== "ACTIVE" && statusValue !== "OUT_OF_SERVICE") {
+      nextErrors.status = "Status must be ACTIVE or OUT_OF_SERVICE.";
+    }
+
+    return {
+      errors: nextErrors,
+      isValid: Object.keys(nextErrors).length === 0,
+      cleaned: {
+        name: cleaned.name,
+        type: cleaned.type,
+        location: cleaned.location,
+        capacity: capacityValue,
+        status: statusValue || "ACTIVE",
+      },
+    };
+  };
+
+  const setCreateField = (key) => (e) => {
+    setCreateForm((p) => ({ ...p, [key]: e.target.value }));
+    if (createFieldErrors[key]) {
+      setCreateFieldErrors((p) => ({ ...p, [key]: undefined }));
+    }
+  };
+
+  const handleCreate = async () => {
+    if (!isAdmin) {
+      return;
+    }
+
+    setCreateError("");
+    const { cleaned, errors: nextErrors, isValid } = validateCreate(createForm);
+    setCreateFieldErrors(nextErrors);
+    if (!isValid) {
+      return;
+    }
+
+    setCreateSubmitting(true);
+    try {
+      const res = await api.post("/admin/assets", cleaned);
+      if (!res.data?.success) {
+        setCreateError(res.data?.message || "Unable to add resource.");
+        return;
+      }
+
+      setShowCreate(false);
+      setCreateForm({ name: "", type: "", capacity: "0", location: "", status: "ACTIVE" });
+      setCreateFieldErrors({});
+      await loadAssets();
+    } catch (err) {
+      setCreateError(err.response?.data?.message || "Unable to add resource.");
+    } finally {
+      setCreateSubmitting(false);
     }
   };
 
@@ -396,33 +485,203 @@ function Resources({ user }) {
                 {assets.length} resource{assets.length !== 1 ? "s" : ""} loaded
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => loadAssets()}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "8px 18px",
-                borderRadius: 10,
-                background: "rgba(34,211,238,0.1)",
-                border: "1px solid rgba(34,211,238,0.3)",
-                color: "#22d3ee",
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: "pointer",
-                transition: "background 0.2s",
-              }}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.background = "rgba(34,211,238,0.18)")
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.background = "rgba(34,211,238,0.1)")
-              }
-            >
-              ↻ Refresh
-            </button>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCreate((v) => !v);
+                    setCreateError("");
+                    setCreateFieldErrors({});
+                  }}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "8px 18px",
+                    borderRadius: 10,
+                    background: "linear-gradient(135deg,#0891b2,#06b6d4)",
+                    border: "none",
+                    color: "#fff",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    boxShadow: "0 4px 14px rgba(6,182,212,0.28)",
+                    transition: "opacity 0.2s, transform 0.1s",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.88")}
+                  onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+                  onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.97)")}
+                  onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
+                >
+                  ＋ Add Resource
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => loadAssets()}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "8px 18px",
+                  borderRadius: 10,
+                  background: "rgba(34,211,238,0.1)",
+                  border: "1px solid rgba(34,211,238,0.3)",
+                  color: "#22d3ee",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  transition: "background 0.2s",
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.background = "rgba(34,211,238,0.18)")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.background = "rgba(34,211,238,0.1)")
+                }
+              >
+                ↻ Refresh
+              </button>
+            </div>
           </div>
+
+          {isAdmin && showCreate && (
+            <div
+              style={{
+                background: "rgba(8,15,30,0.6)",
+                border: "1px solid rgba(255,255,255,0.05)",
+                borderRadius: 14,
+                padding: 20,
+                marginBottom: 24,
+                animation: "fadeSlideUp 220ms ease-out",
+              }}
+            >
+              <p
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  letterSpacing: "0.18em",
+                  textTransform: "uppercase",
+                  color: "#334155",
+                  marginBottom: 14,
+                }}
+              >
+                Add resource
+              </p>
+
+              {createError && (
+                <div
+                  style={{
+                    padding: "12px 16px",
+                    borderRadius: 12,
+                    background: "rgba(248,113,113,0.08)",
+                    border: "1px solid rgba(248,113,113,0.25)",
+                    color: "#fca5a5",
+                    fontSize: 13,
+                    marginBottom: 16,
+                  }}
+                >
+                  ⚠ {createError}
+                </div>
+              )}
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+                  gap: 10,
+                  marginBottom: 14,
+                }}
+              >
+                <FilterInput
+                  value={createForm.name}
+                  onChange={setCreateField("name")}
+                  placeholder="Resource name"
+                  error={createFieldErrors.name}
+                />
+                <FilterInput
+                  value={createForm.type}
+                  onChange={setCreateField("type")}
+                  placeholder="Type"
+                  error={createFieldErrors.type}
+                />
+                <FilterInput
+                  type="number"
+                  value={createForm.capacity}
+                  onChange={setCreateField("capacity")}
+                  placeholder="Capacity"
+                  error={createFieldErrors.capacity}
+                />
+                <FilterInput
+                  value={createForm.location}
+                  onChange={setCreateField("location")}
+                  placeholder="Location"
+                  error={createFieldErrors.location}
+                />
+                <FilterInput
+                  value={createForm.status}
+                  onChange={setCreateField("status")}
+                  error={createFieldErrors.status}
+                >
+                  <option value="ACTIVE">ACTIVE</option>
+                  <option value="OUT_OF_SERVICE">OUT_OF_SERVICE</option>
+                </FilterInput>
+              </div>
+
+              {Object.values(createFieldErrors).some(Boolean) && (
+                <div style={{ marginBottom: 12, fontSize: 12, color: "#f87171" }}>
+                  {Object.entries(createFieldErrors).map(
+                    ([k, v]) => v && <p key={k} style={{ margin: "2px 0" }}>• {v}</p>
+                  )}
+                </div>
+              )}
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCreate(false);
+                    setCreateError("");
+                    setCreateFieldErrors({});
+                  }}
+                  disabled={createSubmitting}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: 10,
+                    background: "transparent",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    color: "#94a3b8",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: createSubmitting ? "not-allowed" : "pointer",
+                    opacity: createSubmitting ? 0.6 : 1,
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCreate}
+                  disabled={createSubmitting}
+                  style={{
+                    padding: "8px 20px",
+                    borderRadius: 10,
+                    background: "linear-gradient(135deg,#0891b2,#06b6d4)",
+                    border: "none",
+                    color: "#fff",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: createSubmitting ? "not-allowed" : "pointer",
+                    boxShadow: "0 4px 14px rgba(6,182,212,0.3)",
+                    opacity: createSubmitting ? 0.75 : 1,
+                  }}
+                >
+                  {createSubmitting ? "Saving…" : "Save"}
+                </button>
+              </div>
+            </div>
+          )}
 
           {error && (
             <div
