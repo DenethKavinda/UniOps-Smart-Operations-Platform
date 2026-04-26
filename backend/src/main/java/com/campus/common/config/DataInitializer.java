@@ -141,6 +141,7 @@ public class DataInitializer {
         Booking booking = new Booking();
         booking.setResourceId(resourceId);
         booking.setResourceName(resourceName);
+        booking.setTitle(title);
         booking.setRequestedBy(requestedBy);
         booking.setRequestedByEmail(requestedByEmail);
         booking.setPurpose(purpose);

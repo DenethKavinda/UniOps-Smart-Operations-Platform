@@ -79,6 +79,7 @@ function Bookings({ user, onBack }) {
       const response = await api.post("/bookings", {
         resourceId: 1,
         resourceName: formData.resourceName,
+        title: formData.resourceName,
         requestedBy: user.name,
         requestedByEmail: user.email,
         purpose: formData.purpose,
@@ -348,7 +349,9 @@ function Bookings({ user, onBack }) {
                           </div>
                           {booking.expectedAttendees && (
                             <div>
-                              <span className="text-slate-400">Attendees: </span>
+                              <span className="text-slate-400">
+                                Attendees:{" "}
+                              </span>
                               {booking.expectedAttendees}
                             </div>
                           )}

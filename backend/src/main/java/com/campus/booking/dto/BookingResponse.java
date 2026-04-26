@@ -9,6 +9,7 @@ public class BookingResponse {
     private Long id;
     private Long resourceId;
     private String resourceName;
+    private String title;
     private String requestedBy;
     private String requestedByEmail;
     private String purpose;
@@ -24,13 +25,14 @@ public class BookingResponse {
     public BookingResponse() {
     }
 
-    public BookingResponse(Long id, Long resourceId, String resourceName, String requestedBy,
+    public BookingResponse(Long id, Long resourceId, String resourceName, String title, String requestedBy,
             String requestedByEmail, String purpose, Integer expectedAttendees, LocalDate bookingDate,
             LocalTime startTime, LocalTime endTime, String status, String adminNote, LocalDateTime createdAt,
             LocalDateTime updatedAt) {
         this.id = id;
         this.resourceId = resourceId;
         this.resourceName = resourceName;
+        this.title = title;
         this.requestedBy = requestedBy;
         this.requestedByEmail = requestedByEmail;
         this.purpose = purpose;
@@ -66,6 +68,14 @@ public class BookingResponse {
 
     public void setResourceName(String resourceName) {
         this.resourceName = resourceName;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
     }
 
     public String getRequestedBy() {

@@ -7,6 +7,7 @@ public class CreateBookingRequest {
 
     private Long resourceId;
     private String resourceName;
+    private String title;
     private String requestedBy;
     private String requestedByEmail;
     private String purpose;
@@ -18,11 +19,12 @@ public class CreateBookingRequest {
     public CreateBookingRequest() {
     }
 
-    public CreateBookingRequest(Long resourceId, String resourceName, String requestedBy,
+    public CreateBookingRequest(Long resourceId, String resourceName, String title, String requestedBy,
             String requestedByEmail, String purpose, Integer expectedAttendees, LocalDate bookingDate,
             LocalTime startTime, LocalTime endTime) {
         this.resourceId = resourceId;
         this.resourceName = resourceName;
+        this.title = title;
         this.requestedBy = requestedBy;
         this.requestedByEmail = requestedByEmail;
         this.purpose = purpose;
@@ -46,6 +48,14 @@ public class CreateBookingRequest {
 
     public void setResourceName(String resourceName) {
         this.resourceName = resourceName;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
     }
 
     public String getRequestedBy() {

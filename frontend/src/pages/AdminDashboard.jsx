@@ -304,17 +304,18 @@ function AdminDashboard({
                 >
                   <span className="flex items-center justify-between w-full">
                     <span>{section.label}</span>
-                    {section.id === "bookings" && dashboard?.bookingCount > 0 && (
-                      <span
-                        className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${
-                          activeSection === section.id
-                            ? "bg-slate-950/30 text-slate-950"
-                            : "bg-cyan-500/20 text-cyan-300"
-                        }`}
-                      >
-                        {dashboard.bookingCount}
-                      </span>
-                    )}
+                    {section.id === "bookings" &&
+                      dashboard?.bookingCount > 0 && (
+                        <span
+                          className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${
+                            activeSection === section.id
+                              ? "bg-slate-950/30 text-slate-950"
+                              : "bg-cyan-500/20 text-cyan-300"
+                          }`}
+                        >
+                          {dashboard.bookingCount}
+                        </span>
+                      )}
                   </span>
                   <span className="text-xs opacity-80">
                     {section.id === activeSection ? "Open" : "View"}
@@ -323,7 +324,7 @@ function AdminDashboard({
               ))}
               <button
                 type="button"
-                onClick={onOpenAnalytics}
+                onClick={() => onOpenAnalytics("users")}
                 className="flex w-full items-center justify-between rounded-2xl bg-slate-950/60 px-4 py-3 text-left text-sm font-semibold text-slate-200 transition hover:bg-slate-800"
               >
                 <span>Analytics</span>
@@ -360,7 +361,9 @@ function AdminDashboard({
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300">
                   {card.title}
                 </p>
-                <p className="mt-2 text-3xl font-black text-white">{card.value}</p>
+                <p className="mt-2 text-3xl font-black text-white">
+                  {card.value}
+                </p>
                 <p className="mt-1 text-sm text-slate-300">{card.note}</p>
               </button>
             ))}
@@ -539,13 +542,22 @@ function AdminDashboard({
                         total bookings
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={loadBookings}
-                      className="rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
-                    >
-                      Refresh
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={loadBookings}
+                        className="rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
+                      >
+                        Refresh
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onOpenAnalytics("bookings")}
+                        className="rounded-xl border border-cyan-400/50 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-500/20"
+                      >
+                        Booking Analytics
+                      </button>
+                    </div>
                   </div>
 
                   <div className="mt-6 overflow-x-auto">
@@ -596,7 +608,9 @@ function AdminDashboard({
                                 {item.requestedBy}
                               </td>
                               <td className="px-4 py-4 text-sm text-slate-300">
-                                {new Date(item.bookingDate).toLocaleDateString()}
+                                {new Date(
+                                  item.bookingDate,
+                                ).toLocaleDateString()}
                               </td>
                               <td className="px-4 py-4 text-sm text-slate-300">
                                 {item.startTime} – {item.endTime}

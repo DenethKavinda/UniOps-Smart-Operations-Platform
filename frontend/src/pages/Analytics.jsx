@@ -73,9 +73,10 @@ function createPdfFooter(doc) {
   }
 }
 
-function Analytics({ user, onBack }) {
-  const [activeCategory, setActiveCategory] = useState("users");
+function Analytics({ user, onBack, initialCategory = "users" }) {
+  const [activeCategory, setActiveCategory] = useState(initialCategory);
   const [dashboard, setDashboard] = useState(null);
+  const [bookings, setBookings] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [incidents, setIncidents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -177,10 +178,14 @@ function Analytics({ user, onBack }) {
       .map((item) => {
         const created = new Date(item.createdAt);
         const resolved = new Date(item.resolvedAt || item.closedAt);
-        if (Number.isNaN(created.getTime()) || Number.isNaN(resolved.getTime())) {
+        if (
+          Number.isNaN(created.getTime()) ||
+          Number.isNaN(resolved.getTime())
+        ) {
           return null;
         }
-        const diffHours = (resolved.getTime() - created.getTime()) / (1000 * 60 * 60);
+        const diffHours =
+          (resolved.getTime() - created.getTime()) / (1000 * 60 * 60);
         return diffHours >= 0 ? diffHours : null;
       })
       .filter((value) => value != null);
@@ -191,14 +196,153 @@ function Analytics({ user, onBack }) {
     return Number(avg.toFixed(1));
   }, [incidents]);
 
+  const bookingStatusCounts = useMemo(() => {
+    const counts = {
+      PENDING: 0,
+      APPROVED: 0,
+      REJECTED: 0,
+      CANCELLED: 0,
+      OTHER: 0,
+    };
+
+    bookings.forEach((item) => {
+      const key = (item.status || "").toUpperCase();
+      if (counts[key] != null) {
+        counts[key] += 1;
+      } else {
+        counts.OTHER += 1;
+      }
+    });
+
+    return counts;
+  }, [bookings]);
+
+  const bookingStatusData = useMemo(() => {
+    const palette = {
+      APPROVED: "#10b981",
+      PENDING: "#f59e0b",
+      REJECTED: "#f43f5e",
+      CANCELLED: "#64748b",
+      OTHER: "#38bdf8",
+    };
+
+    const total = bookings.length;
+    return Object.entries(bookingStatusCounts)
+      .map(([status, count]) => ({
+        status,
+        count,
+        color: palette[status] || "#38bdf8",
+        percent: total === 0 ? 0 : Number(((count / total) * 100).toFixed(1)),
+      }))
+      .filter((item) => item.count > 0)
+      .sort((a, b) => b.count - a.count);
+  }, [bookings.length, bookingStatusCounts]);
+
+  const bookingPieGradient = useMemo(() => {
+    if (bookingStatusData.length === 0) {
+      return "conic-gradient(#1e293b 0deg 360deg)";
+    }
+
+    const total = bookingStatusData.reduce((sum, item) => sum + item.count, 0);
+    let start = 0;
+    const segments = bookingStatusData.map((item) => {
+      const size = (item.count / Math.max(1, total)) * 360;
+      const end = start + size;
+      const segment = `${item.color} ${start}deg ${end}deg`;
+      start = end;
+      return segment;
+    });
+
+    return `conic-gradient(${segments.join(", ")})`;
+  }, [bookingStatusData]);
+
+  const bookingMonthlyTrend = useMemo(() => {
+    const months = [];
+    for (let i = 5; i >= 0; i -= 1) {
+      const date = new Date();
+      date.setMonth(date.getMonth() - i);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      months.push({
+        key,
+        label: date.toLocaleString(undefined, { month: "short" }),
+        count: 0,
+      });
+    }
+
+    bookings.forEach((item) => {
+      const sourceDate = item.bookingDate || item.createdAt;
+      const parsed = new Date(sourceDate);
+      if (Number.isNaN(parsed.getTime())) {
+        return;
+      }
+
+      const key = `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, "0")}`;
+      const target = months.find((month) => month.key === key);
+      if (target) {
+        target.count += 1;
+      }
+    });
+
+    const peak = Math.max(1, ...months.map((month) => month.count));
+    return months.map((month) => ({
+      ...month,
+      barPercent: (month.count / peak) * 100,
+    }));
+  }, [bookings]);
+
+  const bookingTopResources = useMemo(() => {
+    const resourceCount = new Map();
+    bookings.forEach((item) => {
+      const resource = item.resourceName || item.title || "Unknown";
+      resourceCount.set(resource, (resourceCount.get(resource) || 0) + 1);
+    });
+
+    const rows = [...resourceCount.entries()]
+      .map(([resource, count]) => ({ resource, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 6);
+
+    const peak = Math.max(1, ...rows.map((item) => item.count));
+    return rows.map((item) => ({
+      ...item,
+      barPercent: (item.count / peak) * 100,
+    }));
+  }, [bookings]);
+
+  const upcomingBookings = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return [...bookings]
+      .filter((item) => {
+        const date = new Date(item.bookingDate);
+        if (Number.isNaN(date.getTime())) {
+          return false;
+        }
+        return date >= today;
+      })
+      .sort((a, b) => {
+        const dateA = new Date(a.bookingDate);
+        const dateB = new Date(b.bookingDate);
+        return dateA - dateB;
+      })
+      .slice(0, 10);
+  }, [bookings]);
+
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       setError("");
 
       try {
-        const [dashboardResponse, notificationsResponse, incidentsResponse] = await Promise.all([
+        const [
+          dashboardResponse,
+          bookingsResponse,
+          notificationsResponse,
+          incidentsResponse,
+        ] = await Promise.all([
           api.get("/admin/dashboard"),
+          api.get("/bookings"),
           api.get("/notifications"),
           api.get("/incidents"),
         ]);
@@ -209,6 +353,10 @@ function Analytics({ user, onBack }) {
           setError(
             dashboardResponse.data?.message || "Unable to load analytics data.",
           );
+        }
+
+        if (bookingsResponse.data?.success) {
+          setBookings(bookingsResponse.data.data || []);
         }
 
         if (notificationsResponse.data?.success) {
@@ -228,6 +376,10 @@ function Analytics({ user, onBack }) {
 
     load();
   }, []);
+
+  useEffect(() => {
+    setActiveCategory(initialCategory || "users");
+  }, [initialCategory]);
 
   const exportUsersPdf = () => {
     const doc = new jsPDF("p", "mm", "a4");
@@ -474,7 +626,17 @@ function Analytics({ user, onBack }) {
 
     autoTable(doc, {
       startY: doc.lastAutoTable.finalY + 10,
-      head: [["ID", "Resource", "Priority", "Status", "Assigned To", "Reporter", "Created"]],
+      head: [
+        [
+          "ID",
+          "Resource",
+          "Priority",
+          "Status",
+          "Assigned To",
+          "Reporter",
+          "Created",
+        ],
+      ],
       body: rows,
       styles: { fontSize: 8.5, cellPadding: 2.3 },
       headStyles: { fillColor: [8, 47, 73], textColor: [255, 255, 255] },
@@ -535,6 +697,140 @@ function Analytics({ user, onBack }) {
     XLSX.writeFile(
       workbook,
       `uniops-incidents-report-${new Date().toISOString().slice(0, 10)}.xlsx`,
+    );
+  };
+
+  const exportBookingsPdf = () => {
+    const doc = new jsPDF("p", "mm", "a4");
+    createPdfHeader(
+      doc,
+      "Bookings Analytics Report",
+      `${user?.name || "Admin"} | ${new Date().toLocaleDateString()}`,
+    );
+
+    autoTable(doc, {
+      startY: 44,
+      theme: "grid",
+      styles: { fontSize: 10, cellPadding: 3 },
+      headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255] },
+      body: [
+        ["Total Bookings", bookings.length],
+        ["Approved", bookingStatusCounts.APPROVED],
+        ["Pending", bookingStatusCounts.PENDING],
+        ["Rejected", bookingStatusCounts.REJECTED],
+        ["Cancelled", bookingStatusCounts.CANCELLED],
+        ["Upcoming Bookings", upcomingBookings.length],
+      ],
+      margin: { left: 14, right: 14 },
+      columnStyles: {
+        0: {
+          fontStyle: "bold",
+          fillColor: [241, 245, 249],
+          textColor: [15, 23, 42],
+        },
+      },
+    });
+
+    const statusRows = bookingStatusData.map((item) => [
+      item.status,
+      item.count,
+      `${item.percent}%`,
+    ]);
+
+    autoTable(doc, {
+      startY: doc.lastAutoTable.finalY + 8,
+      head: [["Status", "Count", "Share"]],
+      body: statusRows,
+      styles: { fontSize: 9, cellPadding: 2.4 },
+      headStyles: { fillColor: [8, 47, 73], textColor: [255, 255, 255] },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      margin: { left: 14, right: 14 },
+    });
+
+    const details = bookings.map((item) => [
+      item.id || "-",
+      item.title || item.resourceName || "-",
+      item.requestedBy || "-",
+      item.status || "-",
+      item.bookingDate || "-",
+      `${item.startTime || "-"} - ${item.endTime || "-"}`,
+      (item.purpose || "-").length > 40
+        ? `${item.purpose.substring(0, 40)}...`
+        : item.purpose || "-",
+    ]);
+
+    autoTable(doc, {
+      startY: doc.lastAutoTable.finalY + 8,
+      head: [
+        ["ID", "Title", "Requested By", "Status", "Date", "Time", "Purpose"],
+      ],
+      body: details,
+      styles: { fontSize: 8.3, cellPadding: 2.2 },
+      headStyles: { fillColor: [8, 47, 73], textColor: [255, 255, 255] },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      margin: { left: 14, right: 14 },
+      didDrawPage: () => {
+        createPdfFooter(doc);
+      },
+    });
+
+    createPdfFooter(doc);
+    doc.save(
+      `uniops-bookings-report-${new Date().toISOString().slice(0, 10)}.pdf`,
+    );
+  };
+
+  const exportBookingsExcel = () => {
+    const summaryRows = [
+      { Metric: "Total Bookings", Value: bookings.length },
+      { Metric: "Approved", Value: bookingStatusCounts.APPROVED },
+      { Metric: "Pending", Value: bookingStatusCounts.PENDING },
+      { Metric: "Rejected", Value: bookingStatusCounts.REJECTED },
+      { Metric: "Cancelled", Value: bookingStatusCounts.CANCELLED },
+      { Metric: "Upcoming", Value: upcomingBookings.length },
+    ];
+
+    const statusRows = bookingStatusData.map((item) => ({
+      Status: item.status,
+      Count: item.count,
+      Share: `${item.percent}%`,
+    }));
+
+    const details = bookings.map((item) => ({
+      ID: item.id || "-",
+      Title: item.title || item.resourceName || "-",
+      Resource: item.resourceName || "-",
+      "Requested By": item.requestedBy || "-",
+      "Requested By Email": item.requestedByEmail || "-",
+      Status: item.status || "-",
+      Date: item.bookingDate || "-",
+      "Start Time": item.startTime || "-",
+      "End Time": item.endTime || "-",
+      Purpose: item.purpose || "-",
+      "Expected Attendees": item.expectedAttendees ?? "-",
+      "Created At": formatDate(item.createdAt),
+    }));
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(
+      workbook,
+      XLSX.utils.json_to_sheet(summaryRows),
+      "Summary",
+    );
+    XLSX.utils.book_append_sheet(
+      workbook,
+      XLSX.utils.json_to_sheet(statusRows),
+      "Status",
+    );
+    XLSX.utils.book_append_sheet(
+      workbook,
+      XLSX.utils.json_to_sheet(details),
+      "Bookings",
+    );
+
+    XLSX.writeFile(
+      workbook,
+      `uniops-bookings-report-${new Date().toISOString().slice(0, 10)}.xlsx`,
     );
   };
 
@@ -783,12 +1079,18 @@ function Analytics({ user, onBack }) {
                   />
                   <MetricCard
                     label="Open + In Progress"
-                    value={incidentStatusCounts.OPEN + incidentStatusCounts.IN_PROGRESS}
+                    value={
+                      incidentStatusCounts.OPEN +
+                      incidentStatusCounts.IN_PROGRESS
+                    }
                     accent="amber"
                   />
                   <MetricCard
                     label="Resolved + Closed"
-                    value={incidentStatusCounts.RESOLVED + incidentStatusCounts.CLOSED}
+                    value={
+                      incidentStatusCounts.RESOLVED +
+                      incidentStatusCounts.CLOSED
+                    }
                     accent="emerald"
                   />
                   <MetricCard
@@ -807,23 +1109,28 @@ function Analytics({ user, onBack }) {
                       Bar graph of incident workflow status.
                     </p>
                     <div className="mt-5 space-y-3">
-                      {Object.entries(incidentStatusCounts).map(([key, value]) => (
-                        <HorizontalBarRow
-                          key={key}
-                          label={key.replace("_", " ")}
-                          value={value}
-                          max={Math.max(1, ...Object.values(incidentStatusCounts))}
-                          colorClass={
-                            key === "OPEN"
-                              ? "from-rose-400 to-rose-500"
-                              : key === "IN_PROGRESS"
-                                ? "from-blue-400 to-blue-500"
-                                : key === "REJECTED"
-                                  ? "from-amber-400 to-amber-500"
-                                  : "from-emerald-400 to-emerald-500"
-                          }
-                        />
-                      ))}
+                      {Object.entries(incidentStatusCounts).map(
+                        ([key, value]) => (
+                          <HorizontalBarRow
+                            key={key}
+                            label={key.replace("_", " ")}
+                            value={value}
+                            max={Math.max(
+                              1,
+                              ...Object.values(incidentStatusCounts),
+                            )}
+                            colorClass={
+                              key === "OPEN"
+                                ? "from-rose-400 to-rose-500"
+                                : key === "IN_PROGRESS"
+                                  ? "from-blue-400 to-blue-500"
+                                  : key === "REJECTED"
+                                    ? "from-amber-400 to-amber-500"
+                                    : "from-emerald-400 to-emerald-500"
+                            }
+                          />
+                        ),
+                      )}
                     </div>
                   </article>
 
@@ -835,23 +1142,28 @@ function Analytics({ user, onBack }) {
                       Chart by LOW / MEDIUM / HIGH / CRITICAL.
                     </p>
                     <div className="mt-5 space-y-3">
-                      {Object.entries(incidentPriorityCounts).map(([key, value]) => (
-                        <HorizontalBarRow
-                          key={key}
-                          label={key}
-                          value={value}
-                          max={Math.max(1, ...Object.values(incidentPriorityCounts))}
-                          colorClass={
-                            key === "CRITICAL"
-                              ? "from-rose-500 to-red-600"
-                              : key === "HIGH"
-                                ? "from-amber-400 to-orange-500"
-                                : key === "MEDIUM"
-                                  ? "from-cyan-400 to-cyan-500"
-                                  : "from-emerald-400 to-emerald-500"
-                          }
-                        />
-                      ))}
+                      {Object.entries(incidentPriorityCounts).map(
+                        ([key, value]) => (
+                          <HorizontalBarRow
+                            key={key}
+                            label={key}
+                            value={value}
+                            max={Math.max(
+                              1,
+                              ...Object.values(incidentPriorityCounts),
+                            )}
+                            colorClass={
+                              key === "CRITICAL"
+                                ? "from-rose-500 to-red-600"
+                                : key === "HIGH"
+                                  ? "from-amber-400 to-orange-500"
+                                  : key === "MEDIUM"
+                                    ? "from-cyan-400 to-cyan-500"
+                                    : "from-emerald-400 to-emerald-500"
+                            }
+                          />
+                        ),
+                      )}
                     </div>
                   </article>
                 </div>
@@ -865,15 +1177,22 @@ function Analytics({ user, onBack }) {
                   </p>
                   <div className="mt-6 grid grid-cols-6 gap-3">
                     {incidentMonthlyTrend.map((month) => (
-                      <div key={month.key} className="flex flex-col items-center">
+                      <div
+                        key={month.key}
+                        className="flex flex-col items-center"
+                      >
                         <div className="flex h-28 items-end">
                           <div
                             className="w-8 rounded-t-lg bg-gradient-to-t from-cyan-500 to-blue-500"
-                            style={{ height: `${Math.max(8, month.barPercent)}%` }}
+                            style={{
+                              height: `${Math.max(8, month.barPercent)}%`,
+                            }}
                             title={`${month.label}: ${month.count}`}
                           />
                         </div>
-                        <p className="mt-2 text-xs text-slate-300">{month.label}</p>
+                        <p className="mt-2 text-xs text-slate-300">
+                          {month.label}
+                        </p>
                         <p className="text-xs font-semibold text-cyan-300">
                           {month.count}
                         </p>
@@ -960,11 +1279,242 @@ function Analytics({ user, onBack }) {
               </section>
             )}
 
-            {(activeCategory === "bookings" || activeCategory === "assets") && (
+            {activeCategory === "bookings" && (
+              <section className="mt-6 grid gap-6">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <MetricCard
+                    label="Total Bookings"
+                    value={bookings.length}
+                    accent="cyan"
+                  />
+                  <MetricCard
+                    label="Approved"
+                    value={bookingStatusCounts.APPROVED}
+                    accent="emerald"
+                  />
+                  <MetricCard
+                    label="Pending"
+                    value={bookingStatusCounts.PENDING}
+                    accent="amber"
+                  />
+                  <MetricCard
+                    label="Rejected + Cancelled"
+                    value={
+                      bookingStatusCounts.REJECTED +
+                      bookingStatusCounts.CANCELLED
+                    }
+                    accent="rose"
+                  />
+                </div>
+
+                <div className="grid gap-6 lg:grid-cols-[1fr,1.3fr]">
+                  <article className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-xl shadow-cyan-950/10">
+                    <h2 className="text-xl font-bold text-white">
+                      Booking Status Pie
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-300">
+                      Status distribution across all bookings.
+                    </p>
+
+                    <div className="mt-5 flex flex-col items-center">
+                      <div
+                        className="relative h-44 w-44 rounded-full"
+                        style={{ background: bookingPieGradient }}
+                      >
+                        <div className="absolute left-1/2 top-1/2 flex h-24 w-24 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-slate-900 text-center">
+                          <div>
+                            <p className="text-2xl font-black text-white">
+                              {bookings.length}
+                            </p>
+                            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                              Total
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-5 w-full space-y-2 text-sm">
+                        {bookingStatusData.length === 0 ? (
+                          <p className="text-slate-300">
+                            No booking records available.
+                          </p>
+                        ) : (
+                          bookingStatusData.map((item) => (
+                            <div
+                              key={item.status}
+                              className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2"
+                            >
+                              <div className="flex items-center gap-2 text-slate-200">
+                                <span
+                                  className="h-2.5 w-2.5 rounded-full"
+                                  style={{ backgroundColor: item.color }}
+                                />
+                                <span>{item.status}</span>
+                              </div>
+                              <span className="font-semibold text-white">
+                                {item.count} ({item.percent}%)
+                              </span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </article>
+
+                  <article className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-xl shadow-cyan-950/10">
+                    <h2 className="text-xl font-bold text-white">
+                      Top Requested Resources
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-300">
+                      Most frequently requested booking resources.
+                    </p>
+
+                    <div className="mt-5 space-y-3">
+                      {bookingTopResources.length === 0 ? (
+                        <p className="text-sm text-slate-300">
+                          No resource activity available.
+                        </p>
+                      ) : (
+                        bookingTopResources.map((item) => (
+                          <div key={item.resource}>
+                            <div className="mb-1 flex items-center justify-between text-sm text-slate-200">
+                              <span className="truncate pr-2">
+                                {item.resource}
+                              </span>
+                              <span className="font-semibold text-cyan-300">
+                                {item.count}
+                              </span>
+                            </div>
+                            <div className="h-2.5 rounded-full bg-slate-800">
+                              <div
+                                className="h-2.5 rounded-full bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500"
+                                style={{
+                                  width: `${Math.max(6, item.barPercent)}%`,
+                                }}
+                              />
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </article>
+                </div>
+
+                <article className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-xl shadow-cyan-950/10">
+                  <h2 className="text-xl font-bold text-white">
+                    Booking Trend (Last 6 Months)
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-300">
+                    Monthly booking request trend chart.
+                  </p>
+                  <div className="mt-6 grid grid-cols-6 gap-3">
+                    {bookingMonthlyTrend.map((month) => (
+                      <div
+                        key={month.key}
+                        className="flex flex-col items-center"
+                      >
+                        <div className="flex h-28 items-end">
+                          <div
+                            className="w-8 rounded-t-lg bg-gradient-to-t from-emerald-500 to-cyan-400"
+                            style={{
+                              height: `${Math.max(8, month.barPercent)}%`,
+                            }}
+                            title={`${month.label}: ${month.count}`}
+                          />
+                        </div>
+                        <p className="mt-2 text-xs text-slate-300">
+                          {month.label}
+                        </p>
+                        <p className="text-xs font-semibold text-emerald-300">
+                          {month.count}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </article>
+
+                <article className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-xl shadow-cyan-950/10">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h2 className="text-xl font-bold text-white">
+                      Booking Report Generation
+                    </h2>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={exportBookingsPdf}
+                        className="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
+                      >
+                        Export PDF
+                      </button>
+                      <button
+                        type="button"
+                        onClick={exportBookingsExcel}
+                        className="rounded-lg border border-cyan-400/50 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-500/20"
+                      >
+                        Export Excel
+                      </button>
+                    </div>
+                  </div>
+                  <p className="mt-2 text-sm text-slate-300">
+                    Download booking summaries, status shares, and detailed
+                    booking rows.
+                  </p>
+
+                  <div className="mt-5 overflow-x-auto">
+                    <table className="min-w-full border-separate border-spacing-y-2">
+                      <thead>
+                        <tr className="text-left text-xs uppercase tracking-[0.2em] text-slate-400">
+                          <th className="px-3 py-2">Date</th>
+                          <th className="px-3 py-2">Title</th>
+                          <th className="px-3 py-2">Resource</th>
+                          <th className="px-3 py-2">Requester</th>
+                          <th className="px-3 py-2">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {upcomingBookings.length === 0 ? (
+                          <tr>
+                            <td
+                              colSpan="5"
+                              className="px-3 py-4 text-center text-slate-300"
+                            >
+                              No upcoming bookings available.
+                            </td>
+                          </tr>
+                        ) : (
+                          upcomingBookings.map((item) => (
+                            <tr
+                              key={item.id}
+                              className="rounded-2xl bg-slate-950/60"
+                            >
+                              <td className="rounded-l-2xl px-3 py-3 text-sm text-slate-300">
+                                {item.bookingDate || "-"}
+                              </td>
+                              <td className="px-3 py-3 text-sm font-semibold text-white">
+                                {item.title || item.resourceName || "-"}
+                              </td>
+                              <td className="px-3 py-3 text-sm text-slate-300">
+                                {item.resourceName || "-"}
+                              </td>
+                              <td className="px-3 py-3 text-sm text-slate-300">
+                                {item.requestedBy || "-"}
+                              </td>
+                              <td className="rounded-r-2xl px-3 py-3 text-sm text-slate-300">
+                                {item.status || "-"}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </article>
+              </section>
+            )}
+
+            {activeCategory === "assets" && (
               <section className="mt-6 rounded-3xl border border-amber-400/30 bg-amber-500/10 p-6 text-amber-100">
-                <h2 className="text-2xl font-black">
-                  {activeCategory.toUpperCase()}
-                </h2>
+                <h2 className="text-2xl font-black">ASSETS</h2>
                 <p className="mt-2 text-sm">
                   Not implemented yet. Reporting for this category will be added
                   in a future update.

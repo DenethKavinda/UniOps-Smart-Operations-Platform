@@ -73,6 +73,10 @@ public class BookingServiceImpl implements BookingService {
         Booking booking = new Booking();
         booking.setResourceId(request.getResourceId());
         booking.setResourceName(request.getResourceName());
+        String bookingTitle = request.getTitle() == null || request.getTitle().isBlank()
+                ? request.getResourceName()
+                : request.getTitle().trim();
+        booking.setTitle(bookingTitle);
         booking.setRequestedBy(request.getRequestedBy());
         booking.setRequestedByEmail(request.getRequestedByEmail());
         booking.setPurpose(request.getPurpose());
@@ -170,6 +174,7 @@ public class BookingServiceImpl implements BookingService {
                 booking.getId(),
                 booking.getResourceId(),
                 booking.getResourceName(),
+                booking.getTitle(),
                 booking.getRequestedBy(),
                 booking.getRequestedByEmail(),
                 booking.getPurpose(),

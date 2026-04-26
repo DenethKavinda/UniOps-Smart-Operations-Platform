@@ -28,6 +28,9 @@ public class Booking {
     private String resourceName;
 
     @Column(nullable = false)
+    private String title;
+
+    @Column(nullable = false)
     private String requestedBy;
 
     @Column(nullable = false)
@@ -95,6 +98,14 @@ public class Booking {
 
     public void setResourceName(String resourceName) {
         this.resourceName = resourceName;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
     }
 
     public String getRequestedBy() {

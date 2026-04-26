@@ -23,6 +23,7 @@ function App() {
     return localStorage.getItem("uniops_theme") || "light";
   });
   const [currentView, setCurrentView] = useState("login");
+  const [analyticsCategory, setAnalyticsCategory] = useState("users");
   const [currentUser, setCurrentUser] = useState(null);
   const [prefillCredentials, setPrefillCredentials] = useState({
     email: "",
@@ -244,12 +245,19 @@ function App() {
           onOpenAddNotifications={() =>
             setCurrentView("admin-add-notifications")
           }
-          onOpenAnalytics={() => setCurrentView("analytics")}
+          onOpenAnalytics={(category = "users") => {
+            setAnalyticsCategory(category);
+            setCurrentView("analytics");
+          }}
           onOpenIncidents={() => setCurrentView("incidents")}
         />
       )}
       {currentView === "analytics" && currentUser?.role === "ADMIN" && (
-        <Analytics user={currentUser} onBack={() => setCurrentView("admin")} />
+        <Analytics
+          user={currentUser}
+          initialCategory={analyticsCategory}
+          onBack={() => setCurrentView("admin")}
+        />
       )}
       {currentView === "home" && currentUser && (
         <Home
