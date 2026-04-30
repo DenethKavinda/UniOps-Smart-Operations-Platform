@@ -5,6 +5,7 @@ import Analytics from "./pages/Analytics";
 import api from "./api/axiosConfig";
 import AddNotifications from "./pages/AddNotifications";
 import Home from "./pages/Home";
+import Assets from "./pages/Assets";
 import IncidentTickets from "./pages/IncidentTickets";
 import Login from "./pages/Login";
 import Notifications from "./pages/Notifications";
@@ -225,6 +226,11 @@ function App() {
       return;
     }
 
+    if (normalizedRoute === "assets") {
+      setCurrentView("assets");
+      return;
+    }
+
     window.location.assign(route);
   };
 
@@ -266,7 +272,15 @@ function App() {
           hasNewNotificationAlert={hasNewNotificationAlert}
           onOpenNotifications={openNotifications}
           onMarkNotificationsRead={handleMarkNotificationsRead}
-          onNavigate={setCurrentView}
+          onNavigate={handleHomeNavigate}
+        />
+      )}
+      {currentView === "assets" && currentUser && (
+        <Assets
+          user={currentUser}
+          onBack={() =>
+            setCurrentView(currentUser?.role === "ADMIN" ? "admin" : "home")
+          }
         />
       )}
       {currentView === "bookings" && currentUser && (

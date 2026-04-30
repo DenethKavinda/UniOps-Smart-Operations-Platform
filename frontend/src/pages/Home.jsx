@@ -246,6 +246,8 @@ function Home({
         incidents: "incidents",
         "/maintenance": "incidents",
         "/maintenance/new": "incidents",
+        "/assets": "assets",
+        assets: "assets",
       };
       if (viewMap[route]) {
         onNavigate(viewMap[route]);
